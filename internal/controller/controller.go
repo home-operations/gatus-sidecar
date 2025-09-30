@@ -20,26 +20,29 @@ import (
 	"k8s.io/client-go/rest"
 
 	"github.com/home-operations/gatus-sidecar/internal/config"
-	"github.com/home-operations/gatus-sidecar/internal/generator"
+	"github.com/home-operations/gatus-sidecar/internal/endpoint"
 	"github.com/home-operations/gatus-sidecar/internal/handler"
+	"github.com/home-operations/gatus-sidecar/internal/state"
 )
 
 // Controller is a generic Kubernetes resource controller
 type Controller struct {
-	gvr     schema.GroupVersionResource
-	handler handler.ResourceHandler
-	convert func(*unstructured.Unstructured) (metav1.Object, error)
+	gvr          schema.GroupVersionResource
+	handler      handler.ResourceHandler
+	convert      func(*unstructured.Unstructured) (metav1.Object, error)
+	stateManager *state.Manager
 }
 
 // NewIngressController creates a controller for Ingress resources
-func NewIngressController(resourceHandler handler.ResourceHandler) *Controller {
+func NewIngressController(resourceHandler handler.ResourceHandler, stateManager *state.Manager) *Controller {
 	return &Controller{
 		gvr: schema.GroupVersionResource{
 			Group:    "networking.k8s.io",
 			Version:  "v1",
 			Resource: "ingresses",
 		},
-		handler: resourceHandler,
+		handler:      resourceHandler,
+		stateManager: stateManager,
 		convert: func(u *unstructured.Unstructured) (metav1.Object, error) {
 			ingress := &networkingv1.Ingress{}
 			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, ingress); err != nil {
@@ -51,10 +54,11 @@ func NewIngressController(resourceHandler handler.ResourceHandler) *Controller {
 }
 
 // NewHTTPRouteController creates a controller for HTTPRoute resources
-func NewHTTPRouteController(resourceHandler handler.ResourceHandler) *Controller {
+func NewHTTPRouteController(resourceHandler handler.ResourceHandler, stateManager *state.Manager) *Controller {
 	return &Controller{
-		gvr:     gatewayv1.SchemeGroupVersion.WithResource("httproutes"),
-		handler: resourceHandler,
+		gvr:          gatewayv1.SchemeGroupVersion.WithResource("httproutes"),
+		handler:      resourceHandler,
+		stateManager: stateManager,
 		convert: func(u *unstructured.Unstructured) (metav1.Object, error) {
 			route := &gatewayv1.HTTPRoute{}
 			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, route); err != nil {
@@ -133,13 +137,13 @@ func (c *Controller) handleEvent(cfg *config.Config, obj metav1.Object, eventTyp
 	}
 
 	name := obj.GetName()
-	filename := fmt.Sprintf("%s-%s.yaml", obj.GetName(), obj.GetNamespace())
+	namespace := obj.GetNamespace()
+	resource := fmt.Sprintf("%s-%s", name, namespace)
 
 	if eventType == watch.Deleted {
-		if err := generator.Delete(cfg.OutputDir, filename); err != nil {
-			slog.Error("failed to delete file for resource", c.handler.GetResourceName(), obj.GetName(), "error", err)
-		} else {
-			slog.Info("deleted file for resource", c.handler.GetResourceName(), obj.GetName())
+		changed := c.stateManager.Remove(resource)
+		if changed {
+			slog.Info("removed endpoint from state", "resource", c.handler.GetResourceName(), "name", name)
 		}
 		return
 	}
@@ -147,7 +151,7 @@ func (c *Controller) handleEvent(cfg *config.Config, obj metav1.Object, eventTyp
 	// Get the URL from the resource
 	url := c.handler.ExtractURL(obj)
 	if url == "" {
-		slog.Warn("resource has no hosts/hostnames", c.handler.GetResourceName(), obj.GetName())
+		slog.Warn("resource has no hosts/hostnames", "resource", c.handler.GetResourceName(), "name", name)
 		return
 	}
 
@@ -161,24 +165,29 @@ func (c *Controller) handleEvent(cfg *config.Config, obj metav1.Object, eventTyp
 	if annotations != nil {
 		if templateStr, ok := annotations[cfg.TemplateAnnotation]; ok && templateStr != "" {
 			if err := yaml.Unmarshal([]byte(templateStr), &templateData); err != nil {
-				slog.Error("failed to unmarshal template for resource", c.handler.GetResourceName(), obj.GetName(), "error", err)
+				slog.Error("failed to unmarshal template for resource", "resource", c.handler.GetResourceName(), "name", name, "error", err)
 				return
 			}
 		}
 	}
 
-	data := map[string]any{
-		"name":       name,
-		"url":        url,
-		"interval":   interval,
-		"client":     map[string]any{"dns-resolver": dnsResolver},
-		"conditions": []string{condition},
+	// Create endpoint state with defaults
+	endpoint := &endpoint.Endpoint{
+		Name:       name,
+		URL:        url,
+		Interval:   interval,
+		Client:     map[string]any{"dns-resolver": dnsResolver},
+		Conditions: []string{condition},
 	}
 
-	// Write with optional template data
-	if err := generator.Write(data, cfg.OutputDir, filename, templateData); err != nil {
-		slog.Error("write file for resource", c.handler.GetResourceName(), obj.GetName(), "error", err)
-	} else {
-		slog.Info("wrote file for resource", c.handler.GetResourceName(), obj.GetName())
+	// Apply template overrides if present
+	if templateData != nil {
+		endpoint.ApplyTemplate(templateData)
+	}
+
+	// Update state
+	changed := c.stateManager.AddOrUpdate(resource, endpoint)
+	if changed {
+		slog.Info("updated endpoint in state", "resource", c.handler.GetResourceName(), "name", name)
 	}
 }

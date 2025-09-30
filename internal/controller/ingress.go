@@ -11,6 +11,7 @@ import (
 
 	"github.com/home-operations/gatus-sidecar/internal/config"
 	"github.com/home-operations/gatus-sidecar/internal/handler"
+	"github.com/home-operations/gatus-sidecar/internal/state"
 )
 
 // IngressHandler handles Ingress resources
@@ -94,7 +95,8 @@ func hasIngressClass(ingress *networkingv1.Ingress, ingressClass string) bool {
 }
 
 func RunIngress(ctx context.Context, cfg *config.Config) error {
+	stateManager := state.NewManager(cfg.Output)
 	handler := &IngressHandler{}
-	ctrl := NewIngressController(handler)
+	ctrl := NewIngressController(handler, stateManager)
 	return ctrl.Run(ctx, cfg)
 }

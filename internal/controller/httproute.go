@@ -9,6 +9,7 @@ import (
 
 	"github.com/home-operations/gatus-sidecar/internal/config"
 	"github.com/home-operations/gatus-sidecar/internal/handler"
+	"github.com/home-operations/gatus-sidecar/internal/state"
 )
 
 // HTTPRouteHandler handles HTTPRoute resources
@@ -69,7 +70,8 @@ func referencesGateway(route *gatewayv1.HTTPRoute, gatewayName string) bool {
 }
 
 func RunHTTPRoute(ctx context.Context, cfg *config.Config) error {
+	stateManager := state.NewManager(cfg.Output)
 	handler := &HTTPRouteHandler{}
-	ctrl := NewHTTPRouteController(handler)
+	ctrl := NewHTTPRouteController(handler, stateManager)
 	return ctrl.Run(ctx, cfg)
 }

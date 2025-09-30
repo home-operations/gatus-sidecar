@@ -10,7 +10,7 @@ type Config struct {
 	Namespace          string
 	GatewayName        string
 	IngressClass       string
-	OutputDir          string
+	Output             string
 	DefaultInterval    time.Duration
 	DefaultDNSResolver string
 	DefaultCondition   string
@@ -23,7 +23,7 @@ func Load() *Config {
 	flag.StringVar(&cfg.Namespace, "namespace", "", "Namespace to watch (empty for all)")
 	flag.StringVar(&cfg.GatewayName, "gateway", "", "Gateway name to filter HTTPRoutes (required for HTTPRoute mode)")
 	flag.StringVar(&cfg.IngressClass, "ingress-class", "", "Ingress class to filter Ingresses (optional for Ingress mode)")
-	flag.StringVar(&cfg.OutputDir, "output", "/config", "Directory to write generated YAML files")
+	flag.StringVar(&cfg.Output, "output", "/config/gatus-sidecar.yaml", "File to write generated YAML")
 	flag.DurationVar(&cfg.DefaultInterval, "default-interval", time.Minute, "Default interval value for endpoints")
 	flag.StringVar(&cfg.DefaultDNSResolver, "default-dns", "tcp://1.1.1.1:53", "Default DNS resolver for endpoints")
 	flag.StringVar(&cfg.DefaultCondition, "default-condition", "[STATUS] == 200", "Default condition")
