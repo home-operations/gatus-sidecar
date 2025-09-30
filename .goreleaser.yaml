@@ -1,0 +1,42 @@
+---
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+version: 2
+project_name: gatus-sidecar
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: gatus-sidecar
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+    main: ./cmd/root.go
+    binary: gatus-sidecar
+
+archives:
+  - id: gatus-sidecar
+    ids:
+      - gatus-sidecar
+    format_overrides:
+      - goos: windows
+        formats: ['zip']
+
+upx:
+  - enabled: true
+    compress: best
+    lzma: true
