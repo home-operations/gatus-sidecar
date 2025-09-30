@@ -41,15 +41,15 @@ gatus-sidecar [options]
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `-mode` | `httproute` | Mode to run in: `httproute` or `ingress` |
-| `-namespace` | `""` | Namespace to watch (empty for all namespaces) |
-| `-gateway` | `""` | Gateway name to filter HTTPRoutes |
-| `-ingress-class` | `""` | Ingress class to filter Ingresses |
-| `-output` | `/config` | Directory to write generated YAML files |
-| `-default-interval` | `1m` | Default interval value for endpoints |
-| `-default-dns` | `tcp://1.1.1.1:53` | Default DNS resolver for endpoints |
-| `-default-condition` | `[STATUS] == 200` | Default condition for health checks |
-| `-annotation-config` | `gatus.home-operations.com/endpoint` | Annotation key for YAML config override |
+| `--mode` | `httproute` | Mode to run in: `httproute` or `ingress` |
+| `--namespace` | `""` | Namespace to watch (empty for all namespaces) |
+| `--gateway` | `""` | Gateway name to filter HTTPRoutes |
+| `--ingress-class` | `""` | Ingress class to filter Ingresses |
+| `--output` | `/config` | Directory to write generated YAML files |
+| `--default-interval` | `1m` | Default interval value for endpoints |
+| `--default-dns` | `tcp://1.1.1.1:53` | Default DNS resolver for endpoints |
+| `--default-condition` | `[STATUS] == 200` | Default condition for health checks |
+| `--annotation-config` | `gatus.home-operations.com/endpoint` | Annotation key for YAML config override |
 
 ### 🌐 HTTPRoute Mode
 
@@ -85,7 +85,7 @@ endpoints:
 
 ### 🏷️ Custom Configuration via Annotations
 
-You can override the default configuration by adding the annotation specified in `-annotation-config` to your Kubernetes resources:
+You can override the default configuration by adding the annotation specified in `--annotation-config` to your Kubernetes resources:
 
 ```yaml
 apiVersion: gateway.networking.k8s.io/v1
