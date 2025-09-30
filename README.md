@@ -45,7 +45,7 @@ gatus-sidecar [options]
 | `--namespace` | `""` | Namespace to watch (empty for all namespaces) |
 | `--gateway` | `""` | Gateway name to filter HTTPRoutes |
 | `--ingress-class` | `""` | Ingress class to filter Ingresses |
-| `--output` | `/config` | Directory to write generated YAML files |
+| `--output` | `/config/gatus-sidecar.yaml` | File to write generated YAML |
 | `--default-interval` | `1m` | Default interval value for endpoints |
 | `--default-dns` | `tcp://1.1.1.1:53` | Default DNS resolver for endpoints |
 | `--default-condition` | `[STATUS] == 200` | Default condition for health checks |
