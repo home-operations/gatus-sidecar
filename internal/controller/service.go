@@ -23,8 +23,23 @@ type ServiceHandler struct{}
 var _ handler.ResourceHandler = (*ServiceHandler)(nil)
 
 func (h *ServiceHandler) ShouldProcess(obj metav1.Object, cfg *config.Config) bool {
-	_, ok := obj.(*corev1.Service)
-	return ok
+	service, ok := obj.(*corev1.Service)
+	if !ok {
+		return false
+	}
+
+	// Check if the service has the required annotation
+	if cfg.ServiceAnnotation == "" {
+		return true // If no annotation is configured, process all services
+	}
+
+	annotations := service.GetAnnotations()
+	if annotations == nil {
+		return false
+	}
+
+	_, hasAnnotation := annotations[cfg.ServiceAnnotation]
+	return hasAnnotation
 }
 
 func (h *ServiceHandler) ExtractURL(obj metav1.Object) string {
