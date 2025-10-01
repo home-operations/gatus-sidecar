@@ -98,12 +98,13 @@ func (c *Controller) handleEvent(cfg *config.Config, obj metav1.Object, eventTyp
 
 	name := obj.GetName()
 	namespace := obj.GetNamespace()
-	resource := fmt.Sprintf("%s-%s", name, namespace)
+	resource := c.handler.GetResourceName()
+	key := fmt.Sprintf("%s-%s", name, namespace)
 
 	if eventType == watch.Deleted {
-		changed := c.stateManager.Remove(resource)
+		changed := c.stateManager.Remove(key)
 		if changed {
-			slog.Info("removed endpoint from state", "resource", c.handler.GetResourceName(), "name", name)
+			slog.Info("removed endpoint from state", "resource", resource, "name", name)
 		}
 		return
 	}
@@ -111,7 +112,7 @@ func (c *Controller) handleEvent(cfg *config.Config, obj metav1.Object, eventTyp
 	// Get the URL from the resource
 	url := c.handler.ExtractURL(obj)
 	if url == "" {
-		slog.Warn("resource has no hosts/hostnames", "resource", c.handler.GetResourceName(), "name", name)
+		slog.Warn("resource has no url", "resource", resource, "name", name)
 		return
 	}
 
@@ -125,7 +126,7 @@ func (c *Controller) handleEvent(cfg *config.Config, obj metav1.Object, eventTyp
 	if annotations != nil {
 		if templateStr, ok := annotations[cfg.TemplateAnnotation]; ok && templateStr != "" {
 			if err := yaml.Unmarshal([]byte(templateStr), &templateData); err != nil {
-				slog.Error("failed to unmarshal template for resource", "resource", c.handler.GetResourceName(), "name", name, "error", err)
+				slog.Error("failed to unmarshal template for resource", "resource", resource, "name", name, "error", err)
 				return
 			}
 		}
@@ -149,8 +150,8 @@ func (c *Controller) handleEvent(cfg *config.Config, obj metav1.Object, eventTyp
 	}
 
 	// Update state
-	changed := c.stateManager.AddOrUpdate(resource, endpoint)
+	changed := c.stateManager.AddOrUpdate(key, endpoint)
 	if changed {
-		slog.Info("updated endpoint in state", "resource", c.handler.GetResourceName(), "name", name)
+		slog.Info("updated endpoint in state", "resource", resource, "name", name)
 	}
 }
