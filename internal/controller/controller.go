@@ -8,12 +8,8 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-
-	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/dynamic"
@@ -22,7 +18,7 @@ import (
 	"github.com/home-operations/gatus-sidecar/internal/config"
 	"github.com/home-operations/gatus-sidecar/internal/endpoint"
 	"github.com/home-operations/gatus-sidecar/internal/handler"
-	"github.com/home-operations/gatus-sidecar/internal/state"
+	"github.com/home-operations/gatus-sidecar/internal/manager"
 )
 
 // Controller is a generic Kubernetes resource controller
@@ -30,43 +26,7 @@ type Controller struct {
 	gvr          schema.GroupVersionResource
 	handler      handler.ResourceHandler
 	convert      func(*unstructured.Unstructured) (metav1.Object, error)
-	stateManager *state.Manager
-}
-
-// NewIngressController creates a controller for Ingress resources
-func NewIngressController(resourceHandler handler.ResourceHandler, stateManager *state.Manager) *Controller {
-	return &Controller{
-		gvr: schema.GroupVersionResource{
-			Group:    "networking.k8s.io",
-			Version:  "v1",
-			Resource: "ingresses",
-		},
-		handler:      resourceHandler,
-		stateManager: stateManager,
-		convert: func(u *unstructured.Unstructured) (metav1.Object, error) {
-			ingress := &networkingv1.Ingress{}
-			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, ingress); err != nil {
-				return nil, fmt.Errorf("failed to convert to Ingress: %w", err)
-			}
-			return ingress, nil
-		},
-	}
-}
-
-// NewHTTPRouteController creates a controller for HTTPRoute resources
-func NewHTTPRouteController(resourceHandler handler.ResourceHandler, stateManager *state.Manager) *Controller {
-	return &Controller{
-		gvr:          gatewayv1.SchemeGroupVersion.WithResource("httproutes"),
-		handler:      resourceHandler,
-		stateManager: stateManager,
-		convert: func(u *unstructured.Unstructured) (metav1.Object, error) {
-			route := &gatewayv1.HTTPRoute{}
-			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, route); err != nil {
-				return nil, fmt.Errorf("failed to convert to HTTPRoute: %w", err)
-			}
-			return route, nil
-		},
-	}
+	stateManager *manager.Manager
 }
 
 // Run starts the controller watch loop
@@ -179,6 +139,9 @@ func (c *Controller) handleEvent(cfg *config.Config, obj metav1.Object, eventTyp
 		Client:     map[string]any{"dns-resolver": dnsResolver},
 		Conditions: []string{condition},
 	}
+
+	// Apply resource-specific template if available
+	c.handler.ApplyTemplate(cfg, obj, endpoint)
 
 	// Apply template overrides if present
 	if templateData != nil {

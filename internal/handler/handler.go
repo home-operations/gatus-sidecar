@@ -4,6 +4,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/home-operations/gatus-sidecar/internal/config"
+	"github.com/home-operations/gatus-sidecar/internal/endpoint"
 )
 
 // ResourceHandler defines the interface for handling different Kubernetes resources
@@ -14,4 +15,6 @@ type ResourceHandler interface {
 	ExtractURL(obj metav1.Object) string
 	// GetResourceName returns the name to use for logging
 	GetResourceName() string
+	// ApplyTemplate applies the resource-specific template to the endpoint
+	ApplyTemplate(cfg *config.Config, obj metav1.Object, endpoint *endpoint.Endpoint) bool
 }
