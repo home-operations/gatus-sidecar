@@ -41,10 +41,13 @@ gatus-sidecar [options]
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--mode` | `httproute` | Mode to run in: `httproute` or `ingress` |
 | `--namespace` | `""` | Namespace to watch (empty for all namespaces) |
-| `--gateway` | `""` | Gateway name to filter HTTPRoutes |
+| `--gateway-name` | `""` | Gateway name to filter HTTPRoutes |
 | `--ingress-class` | `""` | Ingress class to filter Ingresses |
+| `--auto-routes` | `false` | Automatically create endpoints for HTTPRoutes |
+| `--auto-ingresses` | `false` | Automatically create endpoints for Ingresses |
+| `--auto-services` | `false` | Automatically create endpoints for Services |
+| `--auto-group` | `false` | Automatically group endpoints by namespace (for Services) or gateway/ingress class (for HTTPRoutes/Ingresses) |
 | `--output` | `/config/gatus-sidecar.yaml` | File to write generated YAML |
 | `--default-interval` | `1m` | Default interval value for endpoints |
 | `--default-dns` | `tcp://1.1.1.1:53` | Default DNS resolver for endpoints |
@@ -77,8 +80,8 @@ endpoints:
   - name: "api.example.com"
     url: "https://api.example.com"
     interval: 1m
-    dns:
-      resolver: "tcp://1.1.1.1:53"
+    client:
+      dns-resolver: "tcp://1.1.1.1:53"
     conditions:
       - "[STATUS] == 200"
 ```
