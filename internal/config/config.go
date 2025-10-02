@@ -19,6 +19,7 @@ type Config struct {
 	DefaultDNSResolver string
 	DefaultCondition   string
 	TemplateAnnotation string
+	EnabledAnnotation  string
 }
 
 func Load() *Config {
@@ -35,6 +36,7 @@ func Load() *Config {
 	flag.StringVar(&cfg.DefaultDNSResolver, "default-dns", "tcp://1.1.1.1:53", "Default DNS resolver for endpoints")
 	flag.StringVar(&cfg.DefaultCondition, "default-condition", "[STATUS] == 200", "Default condition")
 	flag.StringVar(&cfg.TemplateAnnotation, "annotation-config", "gatus.home-operations.com/endpoint", "Annotation key for YAML config override")
+	flag.StringVar(&cfg.EnabledAnnotation, "annotation-enabled", "gatus.home-operations.com/enabled", "Annotation key for enabling/disabling resource processing")
 	flag.Parse()
 	return cfg
 }

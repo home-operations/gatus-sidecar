@@ -86,7 +86,9 @@ func (c *Controller) watchLoop(ctx context.Context, cfg *config.Config) error {
 func (c *Controller) handleEvent(cfg *config.Config, obj metav1.Object, eventType watch.EventType) {
 	name := obj.GetName()
 	namespace := obj.GetNamespace()
+	annotations := obj.GetAnnotations()
 	resource := c.gvr.Resource
+
 	key := fmt.Sprintf("%s:%s:%s", name, namespace, resource)
 
 	// If the resource should not be processed or has been deleted, remove it from state
@@ -96,6 +98,26 @@ func (c *Controller) handleEvent(cfg *config.Config, obj metav1.Object, eventTyp
 			slog.Info("removed endpoint from state", "resource", resource, "name", name, "namespace", namespace)
 		}
 		return
+	}
+
+	var templateData map[string]any
+
+	// Check for enabled annotation and template annotation
+	if annotations != nil {
+		if enabledValue, ok := annotations[cfg.EnabledAnnotation]; ok && !(enabledValue == "true" || enabledValue == "1") {
+			removed := c.stateManager.Remove(key)
+			if removed {
+				slog.Info("removed endpoint from state", "resource", resource, "name", name, "namespace", namespace)
+			}
+			return
+		}
+
+		if templateStr, ok := annotations[cfg.TemplateAnnotation]; ok && templateStr != "" {
+			if err := yaml.Unmarshal([]byte(templateStr), &templateData); err != nil {
+				slog.Error("failed to unmarshal template for resource", "resource", resource, "name", name, "namespace", namespace, "error", err)
+				return
+			}
+		}
 	}
 
 	// Get the URL from the resource
@@ -108,18 +130,6 @@ func (c *Controller) handleEvent(cfg *config.Config, obj metav1.Object, eventTyp
 	interval := cfg.DefaultInterval.String()
 	dnsResolver := cfg.DefaultDNSResolver
 	condition := cfg.DefaultCondition
-
-	// Check for template annotation
-	var templateData map[string]any
-	annotations := obj.GetAnnotations()
-	if annotations != nil {
-		if templateStr, ok := annotations[cfg.TemplateAnnotation]; ok && templateStr != "" {
-			if err := yaml.Unmarshal([]byte(templateStr), &templateData); err != nil {
-				slog.Error("failed to unmarshal template for resource", "resource", resource, "name", name, "namespace", namespace, "error", err)
-				return
-			}
-		}
-	}
 
 	// Create endpoint state with defaults
 	endpoint := &endpoint.Endpoint{

@@ -41,7 +41,7 @@ func (h *IngressHandler) ShouldProcess(obj metav1.Object, cfg *config.Config) bo
 			return false
 		}
 
-		_, hasAnnotation := annotations[cfg.TemplateAnnotation]
+		_, hasAnnotation := annotations[cfg.EnabledAnnotation]
 		return hasAnnotation
 	}
 

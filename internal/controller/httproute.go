@@ -40,7 +40,7 @@ func (h *HTTPRouteHandler) ShouldProcess(obj metav1.Object, cfg *config.Config) 
 			return false
 		}
 
-		_, hasAnnotation := annotations[cfg.TemplateAnnotation]
+		_, hasAnnotation := annotations[cfg.EnabledAnnotation]
 		return hasAnnotation
 	}
 
