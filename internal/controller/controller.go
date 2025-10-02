@@ -8,81 +8,32 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-
-	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/rest"
 
 	"github.com/home-operations/gatus-sidecar/internal/config"
 	"github.com/home-operations/gatus-sidecar/internal/endpoint"
 	"github.com/home-operations/gatus-sidecar/internal/handler"
-	"github.com/home-operations/gatus-sidecar/internal/state"
+	"github.com/home-operations/gatus-sidecar/internal/manager"
 )
 
 // Controller is a generic Kubernetes resource controller
 type Controller struct {
-	gvr          schema.GroupVersionResource
-	handler      handler.ResourceHandler
-	convert      func(*unstructured.Unstructured) (metav1.Object, error)
-	stateManager *state.Manager
-}
-
-// NewIngressController creates a controller for Ingress resources
-func NewIngressController(resourceHandler handler.ResourceHandler, stateManager *state.Manager) *Controller {
-	return &Controller{
-		gvr: schema.GroupVersionResource{
-			Group:    "networking.k8s.io",
-			Version:  "v1",
-			Resource: "ingresses",
-		},
-		handler:      resourceHandler,
-		stateManager: stateManager,
-		convert: func(u *unstructured.Unstructured) (metav1.Object, error) {
-			ingress := &networkingv1.Ingress{}
-			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, ingress); err != nil {
-				return nil, fmt.Errorf("failed to convert to Ingress: %w", err)
-			}
-			return ingress, nil
-		},
-	}
-}
-
-// NewHTTPRouteController creates a controller for HTTPRoute resources
-func NewHTTPRouteController(resourceHandler handler.ResourceHandler, stateManager *state.Manager) *Controller {
-	return &Controller{
-		gvr:          gatewayv1.SchemeGroupVersion.WithResource("httproutes"),
-		handler:      resourceHandler,
-		stateManager: stateManager,
-		convert: func(u *unstructured.Unstructured) (metav1.Object, error) {
-			route := &gatewayv1.HTTPRoute{}
-			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, route); err != nil {
-				return nil, fmt.Errorf("failed to convert to HTTPRoute: %w", err)
-			}
-			return route, nil
-		},
-	}
+	gvr           schema.GroupVersionResource
+	options       metav1.ListOptions
+	handler       handler.ResourceHandler
+	convert       func(*unstructured.Unstructured) (metav1.Object, error)
+	stateManager  *manager.Manager
+	dynamicClient dynamic.Interface
 }
 
 // Run starts the controller watch loop
 func (c *Controller) Run(ctx context.Context, cfg *config.Config) error {
-	restCfg, err := rest.InClusterConfig()
-	if err != nil {
-		return fmt.Errorf("get in-cluster config: %w", err)
-	}
-
-	dc, err := dynamic.NewForConfig(restCfg)
-	if err != nil {
-		return fmt.Errorf("create dynamic client: %w", err)
-	}
-
 	for {
-		if err := c.watchLoop(ctx, cfg, dc); err != nil {
+		if err := c.watchLoop(ctx, cfg); err != nil {
 			slog.Error("watch loop error", "error", err)
 		}
 		select {
@@ -93,10 +44,12 @@ func (c *Controller) Run(ctx context.Context, cfg *config.Config) error {
 	}
 }
 
-func (c *Controller) watchLoop(ctx context.Context, cfg *config.Config, dc dynamic.Interface) error {
-	options := metav1.ListOptions{}
+func (c *Controller) GetResource() string {
+	return c.gvr.Resource
+}
 
-	w, err := dc.Resource(c.gvr).Namespace(cfg.Namespace).Watch(ctx, options)
+func (c *Controller) watchLoop(ctx context.Context, cfg *config.Config) error {
+	w, err := c.dynamicClient.Resource(c.gvr).Namespace(cfg.Namespace).Watch(ctx, c.options)
 	if err != nil {
 		return fmt.Errorf("watch %s: %w", c.gvr.Resource, err)
 	}
@@ -131,19 +84,16 @@ func (c *Controller) watchLoop(ctx context.Context, cfg *config.Config, dc dynam
 }
 
 func (c *Controller) handleEvent(cfg *config.Config, obj metav1.Object, eventType watch.EventType) {
-	// Skip if resource doesn't match our filter criteria
-	if !c.handler.ShouldProcess(obj, cfg) {
-		return
-	}
-
 	name := obj.GetName()
 	namespace := obj.GetNamespace()
-	resource := fmt.Sprintf("%s-%s", name, namespace)
+	resource := c.gvr.Resource
+	key := fmt.Sprintf("%s:%s:%s", name, namespace, resource)
 
-	if eventType == watch.Deleted {
-		changed := c.stateManager.Remove(resource)
-		if changed {
-			slog.Info("removed endpoint from state", "resource", c.handler.GetResourceName(), "name", name)
+	// If the resource should not be processed or has been deleted, remove it from state
+	if !c.handler.ShouldProcess(obj, cfg) || eventType == watch.Deleted {
+		removed := c.stateManager.Remove(key)
+		if removed {
+			slog.Info("removed endpoint from state", "resource", resource, "name", name, "namespace", namespace)
 		}
 		return
 	}
@@ -151,7 +101,7 @@ func (c *Controller) handleEvent(cfg *config.Config, obj metav1.Object, eventTyp
 	// Get the URL from the resource
 	url := c.handler.ExtractURL(obj)
 	if url == "" {
-		slog.Warn("resource has no hosts/hostnames", "resource", c.handler.GetResourceName(), "name", name)
+		slog.Warn("resource has no url", "resource", resource, "name", name, "namespace", namespace)
 		return
 	}
 
@@ -165,7 +115,7 @@ func (c *Controller) handleEvent(cfg *config.Config, obj metav1.Object, eventTyp
 	if annotations != nil {
 		if templateStr, ok := annotations[cfg.TemplateAnnotation]; ok && templateStr != "" {
 			if err := yaml.Unmarshal([]byte(templateStr), &templateData); err != nil {
-				slog.Error("failed to unmarshal template for resource", "resource", c.handler.GetResourceName(), "name", name, "error", err)
+				slog.Error("failed to unmarshal template for resource", "resource", resource, "name", name, "namespace", namespace, "error", err)
 				return
 			}
 		}
@@ -180,14 +130,17 @@ func (c *Controller) handleEvent(cfg *config.Config, obj metav1.Object, eventTyp
 		Conditions: []string{condition},
 	}
 
+	// Apply resource-specific template if available
+	c.handler.ApplyTemplate(cfg, obj, endpoint)
+
 	// Apply template overrides if present
 	if templateData != nil {
 		endpoint.ApplyTemplate(templateData)
 	}
 
 	// Update state
-	changed := c.stateManager.AddOrUpdate(resource, endpoint)
+	changed := c.stateManager.AddOrUpdate(key, endpoint)
 	if changed {
-		slog.Info("updated endpoint in state", "resource", c.handler.GetResourceName(), "name", name)
+		slog.Info("updated endpoint in state", "resource", resource, "name", name, "namespace", namespace)
 	}
 }

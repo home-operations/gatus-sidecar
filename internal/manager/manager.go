@@ -1,4 +1,4 @@
-package state
+package manager
 
 import (
 	"log/slog"
@@ -7,7 +7,7 @@ import (
 	"sort"
 	"sync"
 
-	"go.yaml.in/yaml/v2"
+	"gopkg.in/yaml.v3"
 
 	"github.com/home-operations/gatus-sidecar/internal/endpoint"
 )

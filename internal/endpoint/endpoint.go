@@ -5,9 +5,10 @@ import "maps"
 // Endpoint represents the configuration for a single endpoint
 type Endpoint struct {
 	Name       string         `yaml:"name"`
+	Group      string         `yaml:"group,omitempty"`
 	URL        string         `yaml:"url"`
 	Interval   string         `yaml:"interval"`
-	Client     map[string]any `yaml:"client"`
+	Client     map[string]any `yaml:"client,omitempty"`
 	Conditions []string       `yaml:"conditions"`
 	Extra      map[string]any `yaml:",inline,omitempty"` // For additional template fields
 }
@@ -18,16 +19,13 @@ func (e *Endpoint) ApplyTemplate(templateData map[string]any) {
 		return
 	}
 
-	// Initialize Extra map if needed
-	if e.Extra == nil {
-		e.Extra = make(map[string]any)
-	}
-
 	// Apply template overrides
 	for key, value := range templateData {
 		switch key {
 		case "name":
 			e.setStringField(&e.Name, value)
+		case "group":
+			e.setStringField(&e.Group, value)
 		case "url":
 			e.setStringField(&e.URL, value)
 		case "interval":
@@ -38,9 +36,16 @@ func (e *Endpoint) ApplyTemplate(templateData map[string]any) {
 			e.setConditionsField(value)
 		default:
 			// Store other fields in Extra for inline YAML output
-			e.Extra[key] = value
+			e.AddExtraField(key, value)
 		}
 	}
+}
+
+func (e *Endpoint) AddExtraField(key string, value any) {
+	if e.Extra == nil {
+		e.Extra = make(map[string]any)
+	}
+	e.Extra[key] = value
 }
 
 // setStringField sets a string field if the value is a string
