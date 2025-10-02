@@ -72,25 +72,22 @@ func (h *IngressHandler) ExtractURL(obj metav1.Object) string {
 	return url
 }
 
-func (h *IngressHandler) ApplyTemplate(cfg *config.Config, obj metav1.Object, endpoint *endpoint.Endpoint) bool {
+func (h *IngressHandler) ApplyTemplate(cfg *config.Config, obj metav1.Object, endpoint *endpoint.Endpoint) {
 	if cfg.AutoGroup {
 		ingress, ok := obj.(*networkingv1.Ingress)
 		if !ok {
-			return false
+			return
 		}
 
 		// Group by the first ParentRef (gateway) name
 		ingressClass := getIngressClass(ingress)
 		if ingressClass == "" {
-			return false
+			return
 		}
 
 		// Group by IngressClass
 		endpoint.Group = ingressClass
-		return true
 	}
-
-	return false
 }
 
 // Helper functions for Ingress

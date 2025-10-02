@@ -65,24 +65,21 @@ func (h *HTTPRouteHandler) ExtractURL(obj metav1.Object) string {
 	return url
 }
 
-func (h *HTTPRouteHandler) ApplyTemplate(cfg *config.Config, obj metav1.Object, endpoint *endpoint.Endpoint) bool {
+func (h *HTTPRouteHandler) ApplyTemplate(cfg *config.Config, obj metav1.Object, endpoint *endpoint.Endpoint) {
 	if cfg.AutoGroup {
 		route, ok := obj.(*gatewayv1.HTTPRoute)
 		if !ok {
-			return false
+			return
 		}
 
 		// If there are no ParentRefs, cannot group
 		if len(route.Spec.ParentRefs) == 0 {
-			return false
+			return
 		}
 
 		// Group by the first ParentRef (gateway) name
 		endpoint.Group = string(route.Spec.ParentRefs[0].Name)
-		return true
 	}
-
-	return false
 }
 
 // Helper functions for HTTPRoute

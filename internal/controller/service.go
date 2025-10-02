@@ -62,24 +62,18 @@ func (h *ServiceHandler) ExtractURL(obj metav1.Object) string {
 	return url
 }
 
-func (h *ServiceHandler) ApplyTemplate(cfg *config.Config, obj metav1.Object, endpoint *endpoint.Endpoint) bool {
+func (h *ServiceHandler) ApplyTemplate(cfg *config.Config, obj metav1.Object, endpoint *endpoint.Endpoint) {
 	service, ok := obj.(*corev1.Service)
 	if !ok {
-		return false
+		return
 	}
 
 	endpoint.Client = nil // Services do not use custom client settings by default
 	endpoint.Conditions = []string{"[CONNECTED] == true"}
-	endpoint.AddExtraField("ui", map[string]any{
-		"hide-url":      true,
-		"hide-hostname": true,
-	})
 
 	if cfg.AutoGroup {
 		endpoint.Group = service.Namespace
 	}
-
-	return true
 }
 
 // NewServiceController creates a controller for Service resources
