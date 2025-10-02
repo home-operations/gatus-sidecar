@@ -135,7 +135,7 @@ func getIngressClass(ingress *networkingv1.Ingress) string {
 }
 
 // NewIngressController creates a controller for Ingress resources
-func NewIngressController(resourceHandler handler.ResourceHandler, stateManager *manager.Manager, dynamicClient dynamic.Interface) *Controller {
+func NewIngressController(stateManager *manager.Manager, dynamicClient dynamic.Interface) *Controller {
 	return &Controller{
 		gvr: schema.GroupVersionResource{
 			Group:    "networking.k8s.io",
@@ -143,7 +143,7 @@ func NewIngressController(resourceHandler handler.ResourceHandler, stateManager 
 			Resource: "ingresses",
 		},
 		options:       metav1.ListOptions{},
-		handler:       resourceHandler,
+		handler:       &IngressHandler{},
 		stateManager:  stateManager,
 		dynamicClient: dynamicClient,
 		convert: func(u *unstructured.Unstructured) (metav1.Object, error) {

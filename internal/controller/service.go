@@ -83,7 +83,7 @@ func (h *ServiceHandler) ApplyTemplate(cfg *config.Config, obj metav1.Object, en
 }
 
 // NewServiceController creates a controller for Service resources
-func NewServiceController(resourceHandler handler.ResourceHandler, stateManager *manager.Manager, dynamicClient dynamic.Interface) *Controller {
+func NewServiceController(stateManager *manager.Manager, dynamicClient dynamic.Interface) *Controller {
 	return &Controller{
 		gvr: schema.GroupVersionResource{
 			Group:    "",
@@ -91,7 +91,7 @@ func NewServiceController(resourceHandler handler.ResourceHandler, stateManager 
 			Resource: "services",
 		},
 		options:       metav1.ListOptions{},
-		handler:       resourceHandler,
+		handler:       &ServiceHandler{},
 		stateManager:  stateManager,
 		dynamicClient: dynamicClient,
 		convert: func(u *unstructured.Unstructured) (metav1.Object, error) {

@@ -105,7 +105,7 @@ func referencesGateway(route *gatewayv1.HTTPRoute, gatewayName string) bool {
 }
 
 // NewHTTPRouteController creates a controller for HTTPRoute resources
-func NewHTTPRouteController(resourceHandler handler.ResourceHandler, stateManager *manager.Manager, dynamicClient dynamic.Interface) *Controller {
+func NewHTTPRouteController(stateManager *manager.Manager, dynamicClient dynamic.Interface) *Controller {
 	return &Controller{
 		gvr: schema.GroupVersionResource{
 			Group:    "gateway.networking.k8s.io",
@@ -113,7 +113,7 @@ func NewHTTPRouteController(resourceHandler handler.ResourceHandler, stateManage
 			Resource: "httproutes",
 		},
 		options:       metav1.ListOptions{},
-		handler:       resourceHandler,
+		handler:       &HTTPRouteHandler{},
 		stateManager:  stateManager,
 		dynamicClient: dynamicClient,
 		convert: func(u *unstructured.Unstructured) (metav1.Object, error) {

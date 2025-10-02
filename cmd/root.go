@@ -37,9 +37,9 @@ func main() {
 
 	// Create all controllers
 	controllers := []*controller.Controller{
-		controller.NewHTTPRouteController(&controller.HTTPRouteHandler{}, stateManager, dc),
-		controller.NewIngressController(&controller.IngressHandler{}, stateManager, dc),
-		controller.NewServiceController(&controller.ServiceHandler{}, stateManager, dc),
+		controller.NewHTTPRouteController(stateManager, dc),
+		controller.NewIngressController(stateManager, dc),
+		controller.NewServiceController(stateManager, dc),
 	}
 
 	// Run all controllers concurrently
