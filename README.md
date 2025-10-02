@@ -51,7 +51,6 @@ gatus-sidecar [options]
 | `--output` | `/config/gatus-sidecar.yaml` | File to write generated YAML |
 | `--default-interval` | `1m` | Default interval value for endpoints |
 | `--default-dns` | `tcp://1.1.1.1:53` | Default DNS resolver for endpoints |
-| `--default-condition` | `[STATUS] == 200` | Default condition for health checks |
 | `--annotation-config` | `gatus.home-operations.com/endpoint` | Annotation key for YAML config override |
 
 ### 🌐 HTTPRoute Mode

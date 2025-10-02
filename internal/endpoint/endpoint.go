@@ -7,9 +7,11 @@ type Endpoint struct {
 	Name       string         `yaml:"name"`
 	Group      string         `yaml:"group,omitempty"`
 	URL        string         `yaml:"url"`
-	Interval   string         `yaml:"interval"`
-	Client     map[string]any `yaml:"client,omitempty"`
 	Conditions []string       `yaml:"conditions,omitempty"`
+	Interval   string         `yaml:"interval"`
+	DNS        map[string]any `yaml:"dns,omitempty"`
+	Client     map[string]any `yaml:"client,omitempty"`
+	UI         map[string]any `yaml:"ui,omitempty"`
 	Extra      map[string]any `yaml:",inline,omitempty"` // For additional template fields
 }
 
@@ -28,12 +30,16 @@ func (e *Endpoint) ApplyTemplate(templateData map[string]any) {
 			e.setStringField(&e.Group, value)
 		case "url":
 			e.setStringField(&e.URL, value)
-		case "interval":
-			e.setStringField(&e.Interval, value)
-		case "client":
-			e.setClientField(value)
 		case "conditions":
 			e.setConditionsField(value)
+		case "interval":
+			e.setStringField(&e.Interval, value)
+		case "dns":
+			e.setMapField(&e.DNS, value)
+		case "client":
+			e.setMapField(&e.Client, value)
+		case "ui":
+			e.setMapField(&e.UI, value)
 		default:
 			// Store other fields in Extra for inline YAML output
 			e.AddExtraField(key, value)
@@ -55,16 +61,6 @@ func (e *Endpoint) setStringField(field *string, value any) {
 	}
 }
 
-// setClientField merges client settings
-func (e *Endpoint) setClientField(value any) {
-	if client, ok := value.(map[string]any); ok {
-		if e.Client == nil {
-			e.Client = make(map[string]any)
-		}
-		maps.Copy(e.Client, client)
-	}
-}
-
 // setConditionsField handles different condition formats
 func (e *Endpoint) setConditionsField(value any) {
 	switch v := value.(type) {
@@ -80,5 +76,15 @@ func (e *Endpoint) setConditionsField(value any) {
 		e.Conditions = conditions
 	case string:
 		e.Conditions = []string{v}
+	}
+}
+
+// setMapField merges map settings into the specified field
+func (e *Endpoint) setMapField(field *map[string]any, value any) {
+	if mapValue, ok := value.(map[string]any); ok {
+		if *field == nil {
+			*field = make(map[string]any)
+		}
+		maps.Copy(*field, mapValue)
 	}
 }

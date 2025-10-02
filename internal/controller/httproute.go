@@ -40,8 +40,11 @@ func (h *HTTPRouteHandler) ShouldProcess(obj metav1.Object, cfg *config.Config) 
 			return false
 		}
 
-		_, hasAnnotation := annotations[cfg.EnabledAnnotation]
-		return hasAnnotation
+		_, hasEnabledAnnotation := annotations[cfg.EnabledAnnotation]
+		_, hasGuardedAnnotation := annotations[cfg.GuardedAnnotation]
+		_, hasTemplateAnnotation := annotations[cfg.TemplateAnnotation]
+
+		return hasEnabledAnnotation || hasGuardedAnnotation || hasTemplateAnnotation
 	}
 
 	return true
@@ -66,19 +69,30 @@ func (h *HTTPRouteHandler) ExtractURL(obj metav1.Object) string {
 }
 
 func (h *HTTPRouteHandler) ApplyTemplate(cfg *config.Config, obj metav1.Object, endpoint *endpoint.Endpoint) {
-	if cfg.AutoGroup {
-		route, ok := obj.(*gatewayv1.HTTPRoute)
-		if !ok {
-			return
-		}
+	route, ok := obj.(*gatewayv1.HTTPRoute)
+	if !ok {
+		return
+	}
 
-		// Group by first ParentRef (usually the Gateway)
+	if cfg.AutoGroup {
 		if len(route.Spec.ParentRefs) > 0 {
 			endpoint.Group = string(route.Spec.ParentRefs[0].Name)
 		}
 	}
 
 	endpoint.Conditions = []string{"[STATUS] == 200"}
+
+	annotations := obj.GetAnnotations()
+	if annotations != nil {
+		if guardedValue, ok := annotations[cfg.GuardedAnnotation]; ok && (guardedValue == "true" || guardedValue == "1") {
+			endpoint.URL = "1.1.1.1"
+			endpoint.DNS = map[string]any{
+				"query-name": firstHTTPRouteHostname(route),
+				"query-type": "A",
+			}
+			endpoint.Conditions = []string{"len([BODY]) == 0"}
+		}
+	}
 }
 
 // Helper functions for HTTPRoute

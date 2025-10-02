@@ -41,8 +41,11 @@ func (h *IngressHandler) ShouldProcess(obj metav1.Object, cfg *config.Config) bo
 			return false
 		}
 
-		_, hasAnnotation := annotations[cfg.EnabledAnnotation]
-		return hasAnnotation
+		_, hasEnabledAnnotation := annotations[cfg.EnabledAnnotation]
+		_, hasGuardedAnnotation := annotations[cfg.GuardedAnnotation]
+		_, hasTemplateAnnotation := annotations[cfg.TemplateAnnotation]
+
+		return hasEnabledAnnotation || hasGuardedAnnotation || hasTemplateAnnotation
 	}
 
 	return true
@@ -73,13 +76,12 @@ func (h *IngressHandler) ExtractURL(obj metav1.Object) string {
 }
 
 func (h *IngressHandler) ApplyTemplate(cfg *config.Config, obj metav1.Object, endpoint *endpoint.Endpoint) {
-	if cfg.AutoGroup {
-		ingress, ok := obj.(*networkingv1.Ingress)
-		if !ok {
-			return
-		}
+	ingress, ok := obj.(*networkingv1.Ingress)
+	if !ok {
+		return
+	}
 
-		// Group by ingress class if available
+	if cfg.AutoGroup {
 		ingressClass := getIngressClass(ingress)
 		if ingressClass != "" {
 			endpoint.Group = ingressClass
@@ -87,6 +89,18 @@ func (h *IngressHandler) ApplyTemplate(cfg *config.Config, obj metav1.Object, en
 	}
 
 	endpoint.Conditions = []string{"[STATUS] == 200"}
+
+	annotations := obj.GetAnnotations()
+	if annotations != nil {
+		if guardedValue, ok := annotations[cfg.GuardedAnnotation]; ok && (guardedValue == "true" || guardedValue == "1") {
+			endpoint.URL = "1.1.1.1"
+			endpoint.DNS = map[string]any{
+				"query-name": firstIngressHostname(ingress),
+				"query-type": "A",
+			}
+			endpoint.Conditions = []string{"len([BODY]) == 0"}
+		}
+	}
 }
 
 // Helper functions for Ingress
