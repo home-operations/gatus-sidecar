@@ -104,7 +104,7 @@ func (c *Controller) handleEvent(cfg *config.Config, obj metav1.Object, eventTyp
 
 	// Check for enabled annotation and template annotation
 	if annotations != nil {
-		if enabledValue, ok := annotations[cfg.EnabledAnnotation]; ok && !(enabledValue == "true" || enabledValue == "1") {
+		if enabledValue, ok := annotations[cfg.EnabledAnnotation]; ok && enabledValue != "true" && enabledValue != "1" {
 			removed := c.stateManager.Remove(key)
 			if removed {
 				slog.Info("removed endpoint from state", "resource", resource, "name", name, "namespace", namespace)
