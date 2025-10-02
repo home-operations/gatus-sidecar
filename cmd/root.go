@@ -57,10 +57,10 @@ func runControllers(ctx context.Context, cfg *config.Config, controllers []*cont
 
 	for _, c := range controllers {
 		wg.Go(func() {
-			slog.Info("Starting controller", "resource", c.GetResource())
+			slog.Info("Starting controller", "controller", c.GetResource())
 
 			if err := c.Run(ctx, cfg); err != nil {
-				slog.Error("Controller error", "error", err)
+				slog.Error("Controller error", "controller", c.GetResource(), "error", err)
 				errChan <- err
 			}
 		})
