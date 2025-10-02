@@ -72,14 +72,13 @@ func (h *HTTPRouteHandler) ApplyTemplate(cfg *config.Config, obj metav1.Object, 
 			return
 		}
 
-		// If there are no ParentRefs, cannot group
-		if len(route.Spec.ParentRefs) == 0 {
-			return
+		// Group by first ParentRef (usually the Gateway)
+		if len(route.Spec.ParentRefs) > 0 {
+			endpoint.Group = string(route.Spec.ParentRefs[0].Name)
 		}
-
-		// Group by the first ParentRef (gateway) name
-		endpoint.Group = string(route.Spec.ParentRefs[0].Name)
 	}
+
+	endpoint.Conditions = []string{"[STATUS] == 200"}
 }
 
 // Helper functions for HTTPRoute

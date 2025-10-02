@@ -9,7 +9,7 @@ type Endpoint struct {
 	URL        string         `yaml:"url"`
 	Interval   string         `yaml:"interval"`
 	Client     map[string]any `yaml:"client,omitempty"`
-	Conditions []string       `yaml:"conditions"`
+	Conditions []string       `yaml:"conditions,omitempty"`
 	Extra      map[string]any `yaml:",inline,omitempty"` // For additional template fields
 }
 

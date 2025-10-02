@@ -79,15 +79,14 @@ func (h *IngressHandler) ApplyTemplate(cfg *config.Config, obj metav1.Object, en
 			return
 		}
 
-		// Group by the first ParentRef (gateway) name
+		// Group by ingress class if available
 		ingressClass := getIngressClass(ingress)
-		if ingressClass == "" {
-			return
+		if ingressClass != "" {
+			endpoint.Group = ingressClass
 		}
-
-		// Group by IngressClass
-		endpoint.Group = ingressClass
 	}
+
+	endpoint.Conditions = []string{"[STATUS] == 200"}
 }
 
 // Helper functions for Ingress

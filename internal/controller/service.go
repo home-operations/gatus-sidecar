@@ -63,17 +63,12 @@ func (h *ServiceHandler) ExtractURL(obj metav1.Object) string {
 }
 
 func (h *ServiceHandler) ApplyTemplate(cfg *config.Config, obj metav1.Object, endpoint *endpoint.Endpoint) {
-	service, ok := obj.(*corev1.Service)
-	if !ok {
-		return
-	}
-
-	endpoint.Client = nil // Services do not use custom client settings by default
-	endpoint.Conditions = []string{"[CONNECTED] == true"}
-
 	if cfg.AutoGroup {
-		endpoint.Group = service.Namespace
+		endpoint.Group = obj.GetNamespace()
 	}
+
+	endpoint.Client = nil // Use default client configuration
+	endpoint.Conditions = []string{"[CONNECTED] == true"}
 }
 
 // NewServiceController creates a controller for Service resources

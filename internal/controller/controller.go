@@ -127,17 +127,12 @@ func (c *Controller) handleEvent(cfg *config.Config, obj metav1.Object, eventTyp
 		return
 	}
 
-	interval := cfg.DefaultInterval.String()
-	dnsResolver := cfg.DefaultDNSResolver
-	condition := cfg.DefaultCondition
-
 	// Create endpoint state with defaults
 	endpoint := &endpoint.Endpoint{
-		Name:       name,
-		URL:        url,
-		Interval:   interval,
-		Client:     map[string]any{"dns-resolver": dnsResolver},
-		Conditions: []string{condition},
+		Name:     name,
+		URL:      url,
+		Interval: cfg.DefaultInterval.String(),
+		Client:   map[string]any{"dns-resolver": cfg.DefaultDNSResolver},
 	}
 
 	// Apply resource-specific template if available
