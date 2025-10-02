@@ -13,7 +13,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/rest"
 
 	"github.com/home-operations/gatus-sidecar/internal/config"
 	"github.com/home-operations/gatus-sidecar/internal/endpoint"
@@ -23,27 +22,18 @@ import (
 
 // Controller is a generic Kubernetes resource controller
 type Controller struct {
-	gvr          schema.GroupVersionResource
-	options      metav1.ListOptions
-	handler      handler.ResourceHandler
-	convert      func(*unstructured.Unstructured) (metav1.Object, error)
-	stateManager *manager.Manager
+	gvr           schema.GroupVersionResource
+	options       metav1.ListOptions
+	handler       handler.ResourceHandler
+	convert       func(*unstructured.Unstructured) (metav1.Object, error)
+	stateManager  *manager.Manager
+	dynamicClient dynamic.Interface
 }
 
 // Run starts the controller watch loop
 func (c *Controller) Run(ctx context.Context, cfg *config.Config) error {
-	restCfg, err := rest.InClusterConfig()
-	if err != nil {
-		return fmt.Errorf("get in-cluster config: %w", err)
-	}
-
-	dc, err := dynamic.NewForConfig(restCfg)
-	if err != nil {
-		return fmt.Errorf("create dynamic client: %w", err)
-	}
-
 	for {
-		if err := c.watchLoop(ctx, cfg, dc); err != nil {
+		if err := c.watchLoop(ctx, cfg); err != nil {
 			slog.Error("watch loop error", "error", err)
 		}
 		select {
@@ -54,8 +44,8 @@ func (c *Controller) Run(ctx context.Context, cfg *config.Config) error {
 	}
 }
 
-func (c *Controller) watchLoop(ctx context.Context, cfg *config.Config, dc dynamic.Interface) error {
-	w, err := dc.Resource(c.gvr).Namespace(cfg.Namespace).Watch(ctx, c.options)
+func (c *Controller) watchLoop(ctx context.Context, cfg *config.Config) error {
+	w, err := c.dynamicClient.Resource(c.gvr).Namespace(cfg.Namespace).Watch(ctx, c.options)
 	if err != nil {
 		return fmt.Errorf("watch %s: %w", c.gvr.Resource, err)
 	}
@@ -90,19 +80,15 @@ func (c *Controller) watchLoop(ctx context.Context, cfg *config.Config, dc dynam
 }
 
 func (c *Controller) handleEvent(cfg *config.Config, obj metav1.Object, eventType watch.EventType) {
-	// Skip if resource doesn't match our filter criteria
-	if !c.handler.ShouldProcess(obj, cfg) {
-		return
-	}
-
 	name := obj.GetName()
 	namespace := obj.GetNamespace()
 	resource := c.gvr.Resource
 	key := fmt.Sprintf("%s:%s:%s", name, namespace, resource)
 
-	if eventType == watch.Deleted {
-		changed := c.stateManager.Remove(key)
-		if changed {
+	// If the resource should not be processed or has been deleted, remove it from state
+	if !c.handler.ShouldProcess(obj, cfg) || eventType == watch.Deleted {
+		removed := c.stateManager.Remove(key)
+		if removed {
 			slog.Info("removed endpoint from state", "resource", resource, "name", name, "namespace", namespace)
 		}
 		return

@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"context"
 	"fmt"
 	"slices"
 	"strings"
@@ -11,6 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/dynamic"
 
 	"github.com/home-operations/gatus-sidecar/internal/config"
 	"github.com/home-operations/gatus-sidecar/internal/endpoint"
@@ -135,16 +135,17 @@ func getIngressClass(ingress *networkingv1.Ingress) string {
 }
 
 // NewIngressController creates a controller for Ingress resources
-func NewIngressController(resourceHandler handler.ResourceHandler, stateManager *manager.Manager) *Controller {
+func NewIngressController(resourceHandler handler.ResourceHandler, stateManager *manager.Manager, dynamicClient dynamic.Interface) *Controller {
 	return &Controller{
 		gvr: schema.GroupVersionResource{
 			Group:    "networking.k8s.io",
 			Version:  "v1",
 			Resource: "ingresses",
 		},
-		options:      metav1.ListOptions{},
-		handler:      resourceHandler,
-		stateManager: stateManager,
+		options:       metav1.ListOptions{},
+		handler:       resourceHandler,
+		stateManager:  stateManager,
+		dynamicClient: dynamicClient,
 		convert: func(u *unstructured.Unstructured) (metav1.Object, error) {
 			ingress := &networkingv1.Ingress{}
 			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, ingress); err != nil {
@@ -153,11 +154,4 @@ func NewIngressController(resourceHandler handler.ResourceHandler, stateManager 
 			return ingress, nil
 		},
 	}
-}
-
-func RunIngress(ctx context.Context, cfg *config.Config) error {
-	stateManager := manager.NewManager(cfg.Output)
-	handler := &IngressHandler{}
-	ctrl := NewIngressController(handler, stateManager)
-	return ctrl.Run(ctx, cfg)
 }

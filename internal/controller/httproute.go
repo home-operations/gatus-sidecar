@@ -1,13 +1,14 @@
 package controller
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/dynamic"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	"github.com/home-operations/gatus-sidecar/internal/config"
@@ -104,12 +105,17 @@ func referencesGateway(route *gatewayv1.HTTPRoute, gatewayName string) bool {
 }
 
 // NewHTTPRouteController creates a controller for HTTPRoute resources
-func NewHTTPRouteController(resourceHandler handler.ResourceHandler, stateManager *manager.Manager) *Controller {
+func NewHTTPRouteController(resourceHandler handler.ResourceHandler, stateManager *manager.Manager, dynamicClient dynamic.Interface) *Controller {
 	return &Controller{
-		gvr:          gatewayv1.SchemeGroupVersion.WithResource("httproutes"),
-		options:      metav1.ListOptions{},
-		handler:      resourceHandler,
-		stateManager: stateManager,
+		gvr: schema.GroupVersionResource{
+			Group:    "gateway.networking.k8s.io",
+			Version:  "v1",
+			Resource: "httproutes",
+		},
+		options:       metav1.ListOptions{},
+		handler:       resourceHandler,
+		stateManager:  stateManager,
+		dynamicClient: dynamicClient,
 		convert: func(u *unstructured.Unstructured) (metav1.Object, error) {
 			route := &gatewayv1.HTTPRoute{}
 			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, route); err != nil {
@@ -118,11 +124,4 @@ func NewHTTPRouteController(resourceHandler handler.ResourceHandler, stateManage
 			return route, nil
 		},
 	}
-}
-
-func RunHTTPRoute(ctx context.Context, cfg *config.Config) error {
-	stateManager := manager.NewManager(cfg.Output)
-	handler := &HTTPRouteHandler{}
-	ctrl := NewHTTPRouteController(handler, stateManager)
-	return ctrl.Run(ctx, cfg)
 }

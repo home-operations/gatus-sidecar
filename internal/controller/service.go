@@ -1,14 +1,15 @@
 package controller
 
 import (
-	"context"
 	"fmt"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/dynamic"
 
 	"github.com/home-operations/gatus-sidecar/internal/config"
 	"github.com/home-operations/gatus-sidecar/internal/endpoint"
@@ -53,9 +54,9 @@ func (h *ServiceHandler) ExtractURL(obj metav1.Object) string {
 		return ""
 	}
 
-	// Example: http://service-name.namespace.svc:port
+	// Example: tcp://service-name.namespace.svc:1234
 	port := service.Spec.Ports[0].Port
-	protocol := service.Spec.Ports[0].Protocol
+	protocol := strings.ToLower(string(service.Spec.Ports[0].Protocol))
 	url := fmt.Sprintf("%s://%s.%s.svc:%d", protocol, service.Name, service.Namespace, port)
 
 	return url
@@ -82,16 +83,17 @@ func (h *ServiceHandler) ApplyTemplate(cfg *config.Config, obj metav1.Object, en
 }
 
 // NewServiceController creates a controller for Service resources
-func NewServiceController(resourceHandler handler.ResourceHandler, stateManager *manager.Manager) *Controller {
+func NewServiceController(resourceHandler handler.ResourceHandler, stateManager *manager.Manager, dynamicClient dynamic.Interface) *Controller {
 	return &Controller{
 		gvr: schema.GroupVersionResource{
 			Group:    "",
 			Version:  "v1",
 			Resource: "services",
 		},
-		options:      metav1.ListOptions{},
-		handler:      resourceHandler,
-		stateManager: stateManager,
+		options:       metav1.ListOptions{},
+		handler:       resourceHandler,
+		stateManager:  stateManager,
+		dynamicClient: dynamicClient,
 		convert: func(u *unstructured.Unstructured) (metav1.Object, error) {
 			service := &corev1.Service{}
 			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, service); err != nil {
@@ -100,11 +102,4 @@ func NewServiceController(resourceHandler handler.ResourceHandler, stateManager 
 			return service, nil
 		},
 	}
-}
-
-func RunService(ctx context.Context, cfg *config.Config) error {
-	stateManager := manager.NewManager(cfg.Output)
-	handler := &ServiceHandler{}
-	ctrl := NewServiceController(handler, stateManager)
-	return ctrl.Run(ctx, cfg)
 }

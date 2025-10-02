@@ -11,6 +11,8 @@ import (
 	"github.com/home-operations/gatus-sidecar/internal/config"
 	"github.com/home-operations/gatus-sidecar/internal/controller"
 	"github.com/home-operations/gatus-sidecar/internal/manager"
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/rest"
 )
 
 func main() {
@@ -21,11 +23,23 @@ func main() {
 	// Create a single shared state manager
 	stateManager := manager.NewManager(cfg.Output)
 
+	restCfg, err := rest.InClusterConfig()
+	if err != nil {
+		slog.Error("get in-cluster config", "error", err)
+		os.Exit(1)
+	}
+
+	dc, err := dynamic.NewForConfig(restCfg)
+	if err != nil {
+		slog.Error("create dynamic client", "error", err)
+		os.Exit(1)
+	}
+
 	// Create all controllers
 	controllers := []*controller.Controller{
-		controller.NewHTTPRouteController(&controller.HTTPRouteHandler{}, stateManager),
-		controller.NewIngressController(&controller.IngressHandler{}, stateManager),
-		controller.NewServiceController(&controller.ServiceHandler{}, stateManager),
+		controller.NewHTTPRouteController(&controller.HTTPRouteHandler{}, stateManager, dc),
+		controller.NewIngressController(&controller.IngressHandler{}, stateManager, dc),
+		controller.NewServiceController(&controller.ServiceHandler{}, stateManager, dc),
 	}
 
 	// Run all controllers concurrently
