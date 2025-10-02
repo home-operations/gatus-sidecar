@@ -36,8 +36,11 @@ func (h *ServiceHandler) ShouldProcess(obj metav1.Object, cfg *config.Config) bo
 			return false
 		}
 
-		_, hasAnnotation := annotations[cfg.EnabledAnnotation]
-		return hasAnnotation
+		_, hasEnabledAnnotation := annotations[cfg.EnabledAnnotation]
+		_, hasGuardedAnnotation := annotations[cfg.GuardedAnnotation]
+		_, hasTemplateAnnotation := annotations[cfg.TemplateAnnotation]
+
+		return hasEnabledAnnotation || hasGuardedAnnotation || hasTemplateAnnotation
 	}
 
 	return true
@@ -63,12 +66,12 @@ func (h *ServiceHandler) ExtractURL(obj metav1.Object) string {
 }
 
 func (h *ServiceHandler) ApplyTemplate(cfg *config.Config, obj metav1.Object, endpoint *endpoint.Endpoint) {
+	endpoint.Client = nil // Use default client configuration
+	endpoint.Conditions = []string{"[CONNECTED] == true"}
+
 	if cfg.AutoGroup {
 		endpoint.Group = obj.GetNamespace()
 	}
-
-	endpoint.Client = nil // Use default client configuration
-	endpoint.Conditions = []string{"[CONNECTED] == true"}
 }
 
 // NewServiceController creates a controller for Service resources
