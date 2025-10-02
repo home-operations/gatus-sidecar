@@ -32,6 +32,17 @@ func (h *HTTPRouteHandler) ShouldProcess(obj metav1.Object, cfg *config.Config) 
 		return false
 	}
 
+	// If AutoRoutes is disabled, only process if it has the annotation
+	if !cfg.AutoRoutes {
+		annotations := route.GetAnnotations()
+		if annotations == nil {
+			return false
+		}
+
+		_, hasAnnotation := annotations[cfg.TemplateAnnotation]
+		return hasAnnotation
+	}
+
 	return true
 }
 
@@ -51,10 +62,6 @@ func (h *HTTPRouteHandler) ExtractURL(obj metav1.Object) string {
 	}
 
 	return url
-}
-
-func (h *HTTPRouteHandler) GetResourceName() string {
-	return "route"
 }
 
 func (h *HTTPRouteHandler) ApplyTemplate(cfg *config.Config, obj metav1.Object, endpoint *endpoint.Endpoint) bool {
@@ -100,6 +107,7 @@ func referencesGateway(route *gatewayv1.HTTPRoute, gatewayName string) bool {
 func NewHTTPRouteController(resourceHandler handler.ResourceHandler, stateManager *manager.Manager) *Controller {
 	return &Controller{
 		gvr:          gatewayv1.SchemeGroupVersion.WithResource("httproutes"),
+		options:      metav1.ListOptions{},
 		handler:      resourceHandler,
 		stateManager: stateManager,
 		convert: func(u *unstructured.Unstructured) (metav1.Object, error) {

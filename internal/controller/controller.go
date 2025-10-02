@@ -24,6 +24,7 @@ import (
 // Controller is a generic Kubernetes resource controller
 type Controller struct {
 	gvr          schema.GroupVersionResource
+	options      metav1.ListOptions
 	handler      handler.ResourceHandler
 	convert      func(*unstructured.Unstructured) (metav1.Object, error)
 	stateManager *manager.Manager
@@ -54,9 +55,7 @@ func (c *Controller) Run(ctx context.Context, cfg *config.Config) error {
 }
 
 func (c *Controller) watchLoop(ctx context.Context, cfg *config.Config, dc dynamic.Interface) error {
-	options := metav1.ListOptions{}
-
-	w, err := dc.Resource(c.gvr).Namespace(cfg.Namespace).Watch(ctx, options)
+	w, err := dc.Resource(c.gvr).Namespace(cfg.Namespace).Watch(ctx, c.options)
 	if err != nil {
 		return fmt.Errorf("watch %s: %w", c.gvr.Resource, err)
 	}
@@ -98,13 +97,13 @@ func (c *Controller) handleEvent(cfg *config.Config, obj metav1.Object, eventTyp
 
 	name := obj.GetName()
 	namespace := obj.GetNamespace()
-	resource := c.handler.GetResourceName()
-	key := fmt.Sprintf("%s-%s", name, namespace)
+	resource := c.gvr.Resource
+	key := fmt.Sprintf("%s:%s:%s", name, namespace, resource)
 
 	if eventType == watch.Deleted {
 		changed := c.stateManager.Remove(key)
 		if changed {
-			slog.Info("removed endpoint from state", "resource", resource, "name", name)
+			slog.Info("removed endpoint from state", "resource", resource, "name", name, "namespace", namespace)
 		}
 		return
 	}
@@ -112,7 +111,7 @@ func (c *Controller) handleEvent(cfg *config.Config, obj metav1.Object, eventTyp
 	// Get the URL from the resource
 	url := c.handler.ExtractURL(obj)
 	if url == "" {
-		slog.Warn("resource has no url", "resource", resource, "name", name)
+		slog.Warn("resource has no url", "resource", resource, "name", name, "namespace", namespace)
 		return
 	}
 
@@ -126,7 +125,7 @@ func (c *Controller) handleEvent(cfg *config.Config, obj metav1.Object, eventTyp
 	if annotations != nil {
 		if templateStr, ok := annotations[cfg.TemplateAnnotation]; ok && templateStr != "" {
 			if err := yaml.Unmarshal([]byte(templateStr), &templateData); err != nil {
-				slog.Error("failed to unmarshal template for resource", "resource", resource, "name", name, "error", err)
+				slog.Error("failed to unmarshal template for resource", "resource", resource, "name", name, "namespace", namespace, "error", err)
 				return
 			}
 		}
@@ -152,6 +151,6 @@ func (c *Controller) handleEvent(cfg *config.Config, obj metav1.Object, eventTyp
 	// Update state
 	changed := c.stateManager.AddOrUpdate(key, endpoint)
 	if changed {
-		slog.Info("updated endpoint in state", "resource", resource, "name", name)
+		slog.Info("updated endpoint in state", "resource", resource, "name", name, "namespace", namespace)
 	}
 }

@@ -28,18 +28,18 @@ func (h *ServiceHandler) ShouldProcess(obj metav1.Object, cfg *config.Config) bo
 		return false
 	}
 
-	// Check if the service has the required annotation
-	if cfg.ServiceAnnotation == "" {
-		return true // If no annotation is configured, process all services
+	// If AutoServices is disabled, only process if it has the annotation
+	if !cfg.AutoServices {
+		annotations := service.GetAnnotations()
+		if annotations == nil {
+			return false
+		}
+
+		_, hasAnnotation := annotations[cfg.TemplateAnnotation]
+		return hasAnnotation
 	}
 
-	annotations := service.GetAnnotations()
-	if annotations == nil {
-		return false
-	}
-
-	_, hasAnnotation := annotations[cfg.ServiceAnnotation]
-	return hasAnnotation
+	return true
 }
 
 func (h *ServiceHandler) ExtractURL(obj metav1.Object) string {
@@ -59,10 +59,6 @@ func (h *ServiceHandler) ExtractURL(obj metav1.Object) string {
 	url := fmt.Sprintf("%s://%s.%s.svc:%d", protocol, service.Name, service.Namespace, port)
 
 	return url
-}
-
-func (h *ServiceHandler) GetResourceName() string {
-	return "service"
 }
 
 func (h *ServiceHandler) ApplyTemplate(cfg *config.Config, obj metav1.Object, endpoint *endpoint.Endpoint) bool {
@@ -93,6 +89,7 @@ func NewServiceController(resourceHandler handler.ResourceHandler, stateManager 
 			Version:  "v1",
 			Resource: "services",
 		},
+		options:      metav1.ListOptions{},
 		handler:      resourceHandler,
 		stateManager: stateManager,
 		convert: func(u *unstructured.Unstructured) (metav1.Object, error) {

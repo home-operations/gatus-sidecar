@@ -13,8 +13,6 @@ type ResourceHandler interface {
 	ShouldProcess(obj metav1.Object, cfg *config.Config) bool
 	// ExtractURL extracts the URL from the resource
 	ExtractURL(obj metav1.Object) string
-	// GetResourceName returns the name to use for logging
-	GetResourceName() string
 	// ApplyTemplate applies the resource-specific template to the endpoint
 	ApplyTemplate(cfg *config.Config, obj metav1.Object, endpoint *endpoint.Endpoint) bool
 }

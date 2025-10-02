@@ -34,6 +34,17 @@ func (h *IngressHandler) ShouldProcess(obj metav1.Object, cfg *config.Config) bo
 		return false
 	}
 
+	// If AutoIngresses is disabled, only process if it has the annotation
+	if !cfg.AutoIngresses {
+		annotations := ingress.GetAnnotations()
+		if annotations == nil {
+			return false
+		}
+
+		_, hasAnnotation := annotations[cfg.TemplateAnnotation]
+		return hasAnnotation
+	}
+
 	return true
 }
 
@@ -59,10 +70,6 @@ func (h *IngressHandler) ExtractURL(obj metav1.Object) string {
 	}
 
 	return url
-}
-
-func (h *IngressHandler) GetResourceName() string {
-	return "ingress"
 }
 
 func (h *IngressHandler) ApplyTemplate(cfg *config.Config, obj metav1.Object, endpoint *endpoint.Endpoint) bool {
@@ -135,6 +142,7 @@ func NewIngressController(resourceHandler handler.ResourceHandler, stateManager 
 			Version:  "v1",
 			Resource: "ingresses",
 		},
+		options:      metav1.ListOptions{},
 		handler:      resourceHandler,
 		stateManager: stateManager,
 		convert: func(u *unstructured.Unstructured) (metav1.Object, error) {
