@@ -44,6 +44,10 @@ func (c *Controller) Run(ctx context.Context, cfg *config.Config) error {
 	}
 }
 
+func (c *Controller) GetResource() string {
+	return c.gvr.Resource
+}
+
 func (c *Controller) watchLoop(ctx context.Context, cfg *config.Config) error {
 	w, err := c.dynamicClient.Resource(c.gvr).Namespace(cfg.Namespace).Watch(ctx, c.options)
 	if err != nil {

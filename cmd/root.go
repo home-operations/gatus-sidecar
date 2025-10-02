@@ -56,16 +56,14 @@ func runControllers(ctx context.Context, cfg *config.Config, controllers []*cont
 	errChan := make(chan error, len(controllers))
 
 	for _, c := range controllers {
-		wg.Add(1)
-		go func(ctrl *controller.Controller) {
-			defer wg.Done()
-			slog.Info("Starting controller")
+		wg.Go(func() {
+			slog.Info("Starting controller", "resource", c.GetResource())
 
-			if err := ctrl.Run(ctx, cfg); err != nil {
+			if err := c.Run(ctx, cfg); err != nil {
 				slog.Error("Controller error", "error", err)
 				errChan <- err
 			}
-		}(c)
+		})
 	}
 
 	// Wait for either all controllers to finish or an error to occur
