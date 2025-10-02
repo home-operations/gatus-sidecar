@@ -19,49 +19,66 @@ func (e *Endpoint) ApplyTemplate(templateData map[string]any) {
 		return
 	}
 
-	if e.Extra == nil {
-		e.Extra = make(map[string]any)
-	}
-
 	// Apply template overrides
 	for key, value := range templateData {
 		switch key {
 		case "name":
-			e.setField(&e.Name, value)
+			e.setStringField(&e.Name, value)
 		case "group":
-			e.setField(&e.Group, value)
+			e.setStringField(&e.Group, value)
 		case "url":
-			e.setField(&e.URL, value)
+			e.setStringField(&e.URL, value)
 		case "interval":
-			e.setField(&e.Interval, value)
+			e.setStringField(&e.Interval, value)
 		case "client":
-			e.setField(&e.Client, value)
+			e.setClientField(value)
 		case "conditions":
-			e.setField(&e.Conditions, value)
+			e.setConditionsField(value)
 		default:
 			// Store other fields in Extra for inline YAML output
-			e.Extra[key] = value
+			e.AddExtraField(key, value)
 		}
 	}
 }
 
-// setField is a generic setter that handles different field types
-func (e *Endpoint) setField(field any, value any) {
-	switch f := field.(type) {
-	case *string:
-		if str, ok := value.(string); ok {
-			*f = str
+func (e *Endpoint) AddExtraField(key string, value any) {
+	if e.Extra == nil {
+		e.Extra = make(map[string]any)
+	}
+	e.Extra[key] = value
+}
+
+// setStringField sets a string field if the value is a string
+func (e *Endpoint) setStringField(field *string, value any) {
+	if str, ok := value.(string); ok {
+		*field = str
+	}
+}
+
+// setClientField merges client settings
+func (e *Endpoint) setClientField(value any) {
+	if client, ok := value.(map[string]any); ok {
+		if e.Client == nil {
+			e.Client = make(map[string]any)
 		}
-	case *[]string:
-		if list, ok := value.([]string); ok {
-			*f = list
-		}
-	case *map[string]any:
-		if mapValue, ok := value.(map[string]any); ok {
-			if *f == nil {
-				*f = make(map[string]any)
+		maps.Copy(e.Client, client)
+	}
+}
+
+// setConditionsField handles different condition formats
+func (e *Endpoint) setConditionsField(value any) {
+	switch v := value.(type) {
+	case []string:
+		e.Conditions = v
+	case []any:
+		conditions := make([]string, 0, len(v))
+		for _, cond := range v {
+			if str, ok := cond.(string); ok {
+				conditions = append(conditions, str)
 			}
-			maps.Copy(*f, mapValue)
 		}
+		e.Conditions = conditions
+	case string:
+		e.Conditions = []string{v}
 	}
 }
