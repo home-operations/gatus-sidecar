@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -37,10 +38,9 @@ func (h *ServiceHandler) ShouldProcess(obj metav1.Object, cfg *config.Config) bo
 		}
 
 		_, hasEnabledAnnotation := annotations[cfg.EnabledAnnotation]
-		_, hasGuardedAnnotation := annotations[cfg.GuardedAnnotation]
 		_, hasTemplateAnnotation := annotations[cfg.TemplateAnnotation]
 
-		return hasEnabledAnnotation || hasGuardedAnnotation || hasTemplateAnnotation
+		return hasEnabledAnnotation || hasTemplateAnnotation
 	}
 
 	return true
@@ -74,14 +74,19 @@ func (h *ServiceHandler) ApplyTemplate(cfg *config.Config, obj metav1.Object, en
 	}
 }
 
+func (h *ServiceHandler) GetParentAnnotations(ctx context.Context, obj metav1.Object) map[string]string {
+	return nil
+}
+
 // NewServiceController creates a controller for Service resources
 func NewServiceController(stateManager *manager.Manager, dynamicClient dynamic.Interface) *Controller {
+	gvr := schema.GroupVersionResource{
+		Group:    "",
+		Version:  "v1",
+		Resource: "services",
+	}
 	return &Controller{
-		gvr: schema.GroupVersionResource{
-			Group:    "",
-			Version:  "v1",
-			Resource: "services",
-		},
+		gvr:           gvr,
 		options:       metav1.ListOptions{},
 		handler:       &ServiceHandler{},
 		stateManager:  stateManager,

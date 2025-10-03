@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"context"
 	"fmt"
 	"slices"
 	"strings"
@@ -42,10 +43,9 @@ func (h *IngressHandler) ShouldProcess(obj metav1.Object, cfg *config.Config) bo
 		}
 
 		_, hasEnabledAnnotation := annotations[cfg.EnabledAnnotation]
-		_, hasGuardedAnnotation := annotations[cfg.GuardedAnnotation]
 		_, hasTemplateAnnotation := annotations[cfg.TemplateAnnotation]
 
-		return hasEnabledAnnotation || hasGuardedAnnotation || hasTemplateAnnotation
+		return hasEnabledAnnotation || hasTemplateAnnotation
 	}
 
 	return true
@@ -89,18 +89,10 @@ func (h *IngressHandler) ApplyTemplate(cfg *config.Config, obj metav1.Object, en
 	}
 
 	endpoint.Conditions = []string{"[STATUS] == 200"}
+}
 
-	annotations := obj.GetAnnotations()
-	if annotations != nil {
-		if guardedValue, ok := annotations[cfg.GuardedAnnotation]; ok && (guardedValue == "true" || guardedValue == "1") {
-			endpoint.URL = "1.1.1.1"
-			endpoint.DNS = map[string]any{
-				"query-name": firstIngressHostname(ingress),
-				"query-type": "A",
-			}
-			endpoint.Conditions = []string{"len([BODY]) == 0"}
-		}
-	}
+func (h *IngressHandler) GetParentAnnotations(ctx context.Context, obj metav1.Object) map[string]string {
+	return nil
 }
 
 // Helper functions for Ingress
