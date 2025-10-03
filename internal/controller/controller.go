@@ -136,11 +136,9 @@ func (c *Controller) handleEvent(ctx context.Context, cfg *config.Config, obj me
 
 	// Create endpoint state with defaults
 	endpoint := &endpoint.Endpoint{
-		Name:       name,
-		URL:        url,
-		Conditions: []string{cfg.DefaultCondition},
-		Interval:   cfg.DefaultInterval.String(),
-		Client:     map[string]any{"dns-resolver": cfg.DefaultDNSResolver},
+		Name:     name,
+		URL:      url,
+		Interval: cfg.DefaultInterval.String(),
 	}
 
 	// Apply resource-specific template if available
