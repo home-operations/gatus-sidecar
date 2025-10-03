@@ -30,8 +30,8 @@ func (h *ServiceHandler) ShouldProcess(obj metav1.Object, cfg *config.Config) bo
 		return false
 	}
 
-	// If AutoServices is disabled, only process if it has the annotation
-	if !cfg.AutoServices {
+	// If AutoService is disabled, only process if it has the annotation
+	if !cfg.AutoService {
 		annotations := service.GetAnnotations()
 		if annotations == nil {
 			return false

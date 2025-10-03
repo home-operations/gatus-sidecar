@@ -47,9 +47,9 @@ gatus-sidecar [options]
 | `--namespace` | `""` | Namespace to watch (empty for all namespaces) |
 | `--gateway-name` | `""` | Gateway name to filter HTTPRoutes |
 | `--ingress-class` | `""` | Ingress class to filter Ingresses |
-| `--auto-routes` | `false` | Automatically create endpoints for HTTPRoutes |
-| `--auto-ingresses` | `false` | Automatically create endpoints for Ingresses |
-| `--auto-services` | `false` | Automatically create endpoints for Services |
+| `--auto-httproute` | `false` | Automatically create endpoints for HTTPRoutes |
+| `--auto-ingress` | `false` | Automatically create endpoints for Ingresses |
+| `--auto-service` | `false` | Automatically create endpoints for Services |
 | `--auto-group` | `false` | Automatically group endpoints by namespace (for Services) or gateway/ingress class (for HTTPRoutes/Ingresses) |
 | `--output` | `/config/gatus-sidecar.yaml` | File to write generated YAML |
 | `--default-interval` | `1m` | Default interval value for endpoints |

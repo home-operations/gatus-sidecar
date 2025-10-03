@@ -37,8 +37,8 @@ func (h *HTTPRouteHandler) ShouldProcess(obj metav1.Object, cfg *config.Config) 
 		return false
 	}
 
-	// If AutoRoutes is disabled, only process if it has the annotation
-	if !cfg.AutoRoutes {
+	// If AutoHTTPRoute is disabled, only process if it has the annotation
+	if !cfg.AutoHTTPRoute {
 		annotations := route.GetAnnotations()
 		if annotations == nil {
 			return false

@@ -35,8 +35,8 @@ func (h *IngressHandler) ShouldProcess(obj metav1.Object, cfg *config.Config) bo
 		return false
 	}
 
-	// If AutoIngresses is disabled, only process if it has the annotation
-	if !cfg.AutoIngresses {
+	// If AutoIngress is disabled, only process if it has the annotation
+	if !cfg.AutoIngress {
 		annotations := ingress.GetAnnotations()
 		if annotations == nil {
 			return false
