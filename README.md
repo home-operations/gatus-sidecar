@@ -53,8 +53,6 @@ gatus-sidecar [options]
 | `--auto-group` | `false` | Automatically group endpoints by namespace (for Services) or gateway/ingress class (for HTTPRoutes/Ingresses) |
 | `--output` | `/config/gatus-sidecar.yaml` | File to write generated YAML |
 | `--default-interval` | `1m` | Default interval value for endpoints |
-| `--default-condition` | `[STATUS] == 200` | Default condition for endpoints |
-| `--default-dns` | `tcp://1.1.1.1:53` | Default DNS resolver for endpoints |
 | `--annotation-config` | `gatus.home-operations.com/endpoint` | Annotation key for YAML config override |
 | `--annotation-enabled` | `gatus.home-operations.com/enabled` | Annotation key for enabling/disabling resource processing |
 
