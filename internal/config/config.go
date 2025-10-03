@@ -16,9 +16,7 @@ type Config struct {
 	AutoGroup          bool
 	Output             string
 	DefaultInterval    time.Duration
-	DefaultDNSResolver string
 	TemplateAnnotation string
-	GuardedAnnotation  string
 	EnabledAnnotation  string
 }
 
@@ -33,10 +31,8 @@ func Load() *Config {
 	flag.BoolVar(&cfg.AutoGroup, "auto-group", false, "Automatically group endpoints by namespace (for Services) or gateway/ingress class (for HTTPRoutes/Ingresses)")
 	flag.StringVar(&cfg.Output, "output", "/config/gatus-sidecar.yaml", "File to write generated YAML")
 	flag.DurationVar(&cfg.DefaultInterval, "default-interval", time.Minute, "Default interval value for endpoints")
-	flag.StringVar(&cfg.DefaultDNSResolver, "default-dns", "tcp://1.1.1.1:53", "Default DNS resolver for endpoints")
 	flag.StringVar(&cfg.TemplateAnnotation, "annotation-config", "gatus.home-operations.com/endpoint", "Annotation key for YAML config override")
 	flag.StringVar(&cfg.EnabledAnnotation, "annotation-enabled", "gatus.home-operations.com/enabled", "Annotation key for enabling/disabling resource processing")
-	flag.StringVar(&cfg.GuardedAnnotation, "annotation-guarded", "gatus.home-operations.com/guarded", "Annotation key for guarding endpoints")
 	flag.Parse()
 	return cfg
 }

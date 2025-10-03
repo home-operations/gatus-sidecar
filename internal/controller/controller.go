@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"maps"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -78,15 +79,14 @@ func (c *Controller) watchLoop(ctx context.Context, cfg *config.Config) error {
 				continue
 			}
 
-			c.handleEvent(cfg, obj, evt.Type)
+			c.handleEvent(ctx, cfg, obj, evt.Type)
 		}
 	}
 }
 
-func (c *Controller) handleEvent(cfg *config.Config, obj metav1.Object, eventType watch.EventType) {
+func (c *Controller) handleEvent(ctx context.Context, cfg *config.Config, obj metav1.Object, eventType watch.EventType) {
 	name := obj.GetName()
 	namespace := obj.GetNamespace()
-	annotations := obj.GetAnnotations()
 	resource := c.gvr.Resource
 
 	key := fmt.Sprintf("%s:%s:%s", name, namespace, resource)
@@ -99,6 +99,13 @@ func (c *Controller) handleEvent(cfg *config.Config, obj metav1.Object, eventTyp
 		}
 		return
 	}
+
+	// Get parent annotations (e.g. Gateways can provide annotations for HTTPRoutes), then merge in object annotations.
+	annotations := c.handler.GetParentAnnotations(ctx, obj)
+	if annotations == nil {
+		annotations = make(map[string]string)
+	}
+	maps.Copy(annotations, obj.GetAnnotations())
 
 	var templateData map[string]any
 
@@ -132,7 +139,6 @@ func (c *Controller) handleEvent(cfg *config.Config, obj metav1.Object, eventTyp
 		Name:     name,
 		URL:      url,
 		Interval: cfg.DefaultInterval.String(),
-		Client:   map[string]any{"dns-resolver": cfg.DefaultDNSResolver},
 	}
 
 	// Apply resource-specific template if available

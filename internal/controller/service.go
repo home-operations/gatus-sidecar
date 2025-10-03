@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -37,10 +38,9 @@ func (h *ServiceHandler) ShouldProcess(obj metav1.Object, cfg *config.Config) bo
 		}
 
 		_, hasEnabledAnnotation := annotations[cfg.EnabledAnnotation]
-		_, hasGuardedAnnotation := annotations[cfg.GuardedAnnotation]
 		_, hasTemplateAnnotation := annotations[cfg.TemplateAnnotation]
 
-		return hasEnabledAnnotation || hasGuardedAnnotation || hasTemplateAnnotation
+		return hasEnabledAnnotation || hasTemplateAnnotation
 	}
 
 	return true
@@ -66,12 +66,15 @@ func (h *ServiceHandler) ExtractURL(obj metav1.Object) string {
 }
 
 func (h *ServiceHandler) ApplyTemplate(cfg *config.Config, obj metav1.Object, endpoint *endpoint.Endpoint) {
-	endpoint.Client = nil // Use default client configuration
-	endpoint.Conditions = []string{"[CONNECTED] == true"}
-
 	if cfg.AutoGroup {
 		endpoint.Group = obj.GetNamespace()
 	}
+
+	endpoint.Conditions = []string{"[CONNECTED] == true"}
+}
+
+func (h *ServiceHandler) GetParentAnnotations(ctx context.Context, obj metav1.Object) map[string]string {
+	return nil
 }
 
 // NewServiceController creates a controller for Service resources

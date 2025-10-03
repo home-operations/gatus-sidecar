@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -18,7 +19,10 @@ import (
 )
 
 // HTTPRouteHandler handles HTTPRoute resources
-type HTTPRouteHandler struct{}
+type HTTPRouteHandler struct {
+	gvr           schema.GroupVersionResource
+	dynamicClient dynamic.Interface
+}
 
 // Ensure HTTPRouteHandler implements the ResourceHandler interface
 var _ handler.ResourceHandler = (*HTTPRouteHandler)(nil)
@@ -41,10 +45,9 @@ func (h *HTTPRouteHandler) ShouldProcess(obj metav1.Object, cfg *config.Config) 
 		}
 
 		_, hasEnabledAnnotation := annotations[cfg.EnabledAnnotation]
-		_, hasGuardedAnnotation := annotations[cfg.GuardedAnnotation]
 		_, hasTemplateAnnotation := annotations[cfg.TemplateAnnotation]
 
-		return hasEnabledAnnotation || hasGuardedAnnotation || hasTemplateAnnotation
+		return hasEnabledAnnotation || hasTemplateAnnotation
 	}
 
 	return true
@@ -74,25 +77,35 @@ func (h *HTTPRouteHandler) ApplyTemplate(cfg *config.Config, obj metav1.Object, 
 		return
 	}
 
-	if cfg.AutoGroup {
-		if len(route.Spec.ParentRefs) > 0 {
-			endpoint.Group = string(route.Spec.ParentRefs[0].Name)
-		}
+	if cfg.AutoGroup && len(route.Spec.ParentRefs) > 0 {
+		endpoint.Group = string(route.Spec.ParentRefs[0].Name)
 	}
 
 	endpoint.Conditions = []string{"[STATUS] == 200"}
+}
 
-	annotations := obj.GetAnnotations()
-	if annotations != nil {
-		if guardedValue, ok := annotations[cfg.GuardedAnnotation]; ok && (guardedValue == "true" || guardedValue == "1") {
-			endpoint.URL = "1.1.1.1"
-			endpoint.DNS = map[string]any{
-				"query-name": firstHTTPRouteHostname(route),
-				"query-type": "A",
-			}
-			endpoint.Conditions = []string{"len([BODY]) == 0"}
-		}
+func (h *HTTPRouteHandler) GetParentAnnotations(ctx context.Context, obj metav1.Object) map[string]string {
+	route, ok := obj.(*gatewayv1.HTTPRoute)
+	if !ok || len(route.Spec.ParentRefs) == 0 {
+		return nil
 	}
+
+	parent := route.Spec.ParentRefs[0]
+	if parent.Kind != nil && *parent.Kind != "Gateway" {
+		return nil
+	}
+
+	namespace := route.GetNamespace()
+	if parent.Namespace != nil {
+		namespace = string(*parent.Namespace)
+	}
+
+	parentResource, err := h.dynamicClient.Resource(h.gvr).Namespace(namespace).Get(ctx, string(parent.Name), metav1.GetOptions{})
+	if err != nil {
+		return nil
+	}
+
+	return parentResource.GetAnnotations()
 }
 
 // Helper functions for HTTPRoute
@@ -116,14 +129,15 @@ func referencesGateway(route *gatewayv1.HTTPRoute, gatewayName string) bool {
 
 // NewHTTPRouteController creates a controller for HTTPRoute resources
 func NewHTTPRouteController(stateManager *manager.Manager, dynamicClient dynamic.Interface) *Controller {
+	gvr := schema.GroupVersionResource{
+		Group:    "gateway.networking.k8s.io",
+		Version:  "v1",
+		Resource: "httproutes",
+	}
 	return &Controller{
-		gvr: schema.GroupVersionResource{
-			Group:    "gateway.networking.k8s.io",
-			Version:  "v1",
-			Resource: "httproutes",
-		},
+		gvr:           gvr,
 		options:       metav1.ListOptions{},
-		handler:       &HTTPRouteHandler{},
+		handler:       &HTTPRouteHandler{gvr: gvr, dynamicClient: dynamicClient},
 		stateManager:  stateManager,
 		dynamicClient: dynamicClient,
 		convert: func(u *unstructured.Unstructured) (metav1.Object, error) {
