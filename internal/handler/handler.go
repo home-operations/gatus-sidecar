@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"context"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/home-operations/gatus-sidecar/internal/config"
@@ -15,4 +17,6 @@ type ResourceHandler interface {
 	ExtractURL(obj metav1.Object) string
 	// ApplyTemplate applies the resource-specific template to the endpoint
 	ApplyTemplate(cfg *config.Config, obj metav1.Object, endpoint *endpoint.Endpoint)
+	// GetParentAnnotations returns annotations from a parent resource (e.g., Gateway for HTTPRoute)
+	GetParentAnnotations(ctx context.Context, obj metav1.Object) map[string]string
 }

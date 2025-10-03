@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"context"
 	"fmt"
 	"slices"
 	"strings"
@@ -101,6 +102,10 @@ func (h *IngressHandler) ApplyTemplate(cfg *config.Config, obj metav1.Object, en
 			endpoint.Conditions = []string{"len([BODY]) == 0"}
 		}
 	}
+}
+
+func (h *IngressHandler) GetParentAnnotations(context.Context, metav1.Object) map[string]string {
+	return map[string]string{}
 }
 
 // Helper functions for Ingress

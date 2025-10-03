@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -18,7 +19,9 @@ import (
 )
 
 // HTTPRouteHandler handles HTTPRoute resources
-type HTTPRouteHandler struct{}
+type HTTPRouteHandler struct {
+	dynamicClient dynamic.Interface
+}
 
 // Ensure HTTPRouteHandler implements the ResourceHandler interface
 var _ handler.ResourceHandler = (*HTTPRouteHandler)(nil)
@@ -95,6 +98,44 @@ func (h *HTTPRouteHandler) ApplyTemplate(cfg *config.Config, obj metav1.Object, 
 	}
 }
 
+func (h *HTTPRouteHandler) GetParentAnnotations(ctx context.Context, obj metav1.Object) map[string]string {
+	route, ok := obj.(*gatewayv1.HTTPRoute)
+	if !ok {
+		return map[string]string{}
+	}
+	if h.dynamicClient == nil {
+		return map[string]string{}
+	}
+	if len(route.Spec.ParentRefs) == 0 {
+		return map[string]string{}
+	}
+	parent := route.Spec.ParentRefs[0]
+	if parent.Kind != nil && *parent.Kind != "Gateway" {
+		return map[string]string{}
+	}
+	gvr := schema.GroupVersionResource{
+		Group:    "gateway.networking.k8s.io",
+		Version:  "v1",
+		Resource: "gateways",
+	}
+	if parent.Group != nil {
+		gvr.Group = string(*parent.Group)
+	}
+	ns := route.GetNamespace()
+	if parent.Namespace != nil {
+		ns = string(*parent.Namespace)
+	}
+	u, err := h.dynamicClient.Resource(gvr).Namespace(ns).Get(ctx, string(parent.Name), metav1.GetOptions{})
+	if err != nil {
+		return map[string]string{}
+	}
+	annotations := u.GetAnnotations()
+	if annotations == nil {
+		return map[string]string{}
+	}
+	return annotations
+}
+
 // Helper functions for HTTPRoute
 func firstHTTPRouteHostname(route *gatewayv1.HTTPRoute) string {
 	for _, h := range route.Spec.Hostnames {
@@ -123,7 +164,7 @@ func NewHTTPRouteController(stateManager *manager.Manager, dynamicClient dynamic
 			Resource: "httproutes",
 		},
 		options:       metav1.ListOptions{},
-		handler:       &HTTPRouteHandler{},
+		handler:       &HTTPRouteHandler{dynamicClient: dynamicClient},
 		stateManager:  stateManager,
 		dynamicClient: dynamicClient,
 		convert: func(u *unstructured.Unstructured) (metav1.Object, error) {

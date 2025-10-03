@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -72,6 +73,10 @@ func (h *ServiceHandler) ApplyTemplate(cfg *config.Config, obj metav1.Object, en
 	if cfg.AutoGroup {
 		endpoint.Group = obj.GetNamespace()
 	}
+}
+
+func (h *ServiceHandler) GetParentAnnotations(context.Context, metav1.Object) map[string]string {
+	return map[string]string{}
 }
 
 // NewServiceController creates a controller for Service resources
