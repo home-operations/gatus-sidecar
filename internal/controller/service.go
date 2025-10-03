@@ -80,13 +80,12 @@ func (h *ServiceHandler) GetParentAnnotations(ctx context.Context, obj metav1.Ob
 
 // NewServiceController creates a controller for Service resources
 func NewServiceController(stateManager *manager.Manager, dynamicClient dynamic.Interface) *Controller {
-	gvr := schema.GroupVersionResource{
-		Group:    "",
-		Version:  "v1",
-		Resource: "services",
-	}
 	return &Controller{
-		gvr:           gvr,
+		gvr: schema.GroupVersionResource{
+			Group:    "",
+			Version:  "v1",
+			Resource: "services",
+		},
 		options:       metav1.ListOptions{},
 		handler:       &ServiceHandler{},
 		stateManager:  stateManager,
