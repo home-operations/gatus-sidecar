@@ -88,7 +88,16 @@ func (h *IngressHandler) ApplyTemplate(cfg *config.Config, obj metav1.Object, en
 		}
 	}
 
-	endpoint.Conditions = []string{"[STATUS] == 200"}
+	if endpoint.Guarded {
+		endpoint.Conditions = []string{"len([BODY]) == 0"}
+		endpoint.DNS = map[string]any{
+			"query-name": firstIngressHostname(ingress),
+			"query-type": "A",
+		}
+		endpoint.URL = "1.1.1.1"
+	} else {
+		endpoint.Conditions = []string{"[STATUS] == 200"}
+	}
 }
 
 func (h *IngressHandler) GetParentAnnotations(ctx context.Context, obj metav1.Object) map[string]string {

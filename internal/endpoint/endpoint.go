@@ -12,6 +12,7 @@ type Endpoint struct {
 	DNS        map[string]any `yaml:"dns,omitempty"`
 	Client     map[string]any `yaml:"client,omitempty"`
 	UI         map[string]any `yaml:"ui,omitempty"`
+	Guarded    bool           `yaml:"-"`
 	Extra      map[string]any `yaml:",inline,omitempty"` // For additional template fields
 }
 
@@ -40,6 +41,10 @@ func (e *Endpoint) ApplyTemplate(templateData map[string]any) {
 			e.setMapField(&e.Client, value)
 		case "ui":
 			e.setMapField(&e.UI, value)
+		case "guarded":
+			if guarded, ok := value.(bool); ok {
+				e.Guarded = guarded
+			}
 		default:
 			// Store other fields in Extra for inline YAML output
 			e.AddExtraField(key, value)

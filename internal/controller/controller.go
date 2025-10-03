@@ -134,11 +134,15 @@ func (c *Controller) handleEvent(ctx context.Context, cfg *config.Config, obj me
 		return
 	}
 
+	// Internal home-ops opinionated "guarded" endpoint feature
+	guarded := templateData != nil && templateData["guarded"] != nil
+
 	// Create endpoint state with defaults
 	endpoint := &endpoint.Endpoint{
 		Name:     name,
 		URL:      url,
 		Interval: cfg.DefaultInterval.String(),
+		Guarded:  guarded,
 	}
 
 	// Apply resource-specific template if available

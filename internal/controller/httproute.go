@@ -81,7 +81,16 @@ func (h *HTTPRouteHandler) ApplyTemplate(cfg *config.Config, obj metav1.Object, 
 		endpoint.Group = string(route.Spec.ParentRefs[0].Name)
 	}
 
-	endpoint.Conditions = []string{"[STATUS] == 200"}
+	if endpoint.Guarded {
+		endpoint.Conditions = []string{"len([BODY]) == 0"}
+		endpoint.DNS = map[string]any{
+			"query-name": firstHTTPRouteHostname(route),
+			"query-type": "A",
+		}
+		endpoint.URL = "1.1.1.1"
+	} else {
+		endpoint.Conditions = []string{"[STATUS] == 200"}
+	}
 }
 
 func (h *HTTPRouteHandler) GetParentAnnotations(ctx context.Context, obj metav1.Object) map[string]string {
