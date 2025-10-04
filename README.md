@@ -50,7 +50,6 @@ gatus-sidecar [options]
 | `--auto-httproute` | `false` | Automatically create endpoints for HTTPRoutes |
 | `--auto-ingress` | `false` | Automatically create endpoints for Ingresses |
 | `--auto-service` | `false` | Automatically create endpoints for Services |
-| `--auto-group` | `false` | Automatically group endpoints by namespace (for Services) or gateway/ingress class (for HTTPRoutes/Ingresses) |
 | `--output` | `/config/gatus-sidecar.yaml` | File to write generated YAML |
 | `--default-interval` | `1m` | Default interval value for endpoints |
 | `--annotation-config` | `gatus.home-operations.com/endpoint` | Annotation key for YAML config override |

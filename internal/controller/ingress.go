@@ -76,25 +76,18 @@ func (h *IngressHandler) ExtractURL(obj metav1.Object) string {
 }
 
 func (h *IngressHandler) ApplyTemplate(cfg *config.Config, obj metav1.Object, endpoint *endpoint.Endpoint) {
-	ingress, ok := obj.(*networkingv1.Ingress)
-	if !ok {
-		return
-	}
-
-	if cfg.AutoGroup {
-		ingressClass := getIngressClass(ingress)
-		if ingressClass != "" {
-			endpoint.Group = ingressClass
-		}
-	}
-
 	if endpoint.Guarded {
-		endpoint.Conditions = []string{"len([BODY]) == 0"}
+		ingress, ok := obj.(*networkingv1.Ingress)
+		if !ok {
+			return
+		}
+
+		endpoint.URL = "1.1.1.1"
 		endpoint.DNS = map[string]any{
 			"query-name": firstIngressHostname(ingress),
 			"query-type": "A",
 		}
-		endpoint.URL = "1.1.1.1"
+		endpoint.Conditions = []string{"len([BODY]) == 0"}
 	} else {
 		endpoint.Conditions = []string{"[STATUS] == 200"}
 	}

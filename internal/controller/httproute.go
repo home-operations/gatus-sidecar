@@ -20,7 +20,6 @@ import (
 
 // HTTPRouteHandler handles HTTPRoute resources
 type HTTPRouteHandler struct {
-	gvr           schema.GroupVersionResource
 	dynamicClient dynamic.Interface
 }
 
@@ -72,22 +71,18 @@ func (h *HTTPRouteHandler) ExtractURL(obj metav1.Object) string {
 }
 
 func (h *HTTPRouteHandler) ApplyTemplate(cfg *config.Config, obj metav1.Object, endpoint *endpoint.Endpoint) {
-	route, ok := obj.(*gatewayv1.HTTPRoute)
-	if !ok {
-		return
-	}
-
-	if cfg.AutoGroup && len(route.Spec.ParentRefs) > 0 {
-		endpoint.Group = string(route.Spec.ParentRefs[0].Name)
-	}
-
 	if endpoint.Guarded {
-		endpoint.Conditions = []string{"len([BODY]) == 0"}
+		route, ok := obj.(*gatewayv1.HTTPRoute)
+		if !ok {
+			return
+		}
+
+		endpoint.URL = "1.1.1.1"
 		endpoint.DNS = map[string]any{
 			"query-name": firstHTTPRouteHostname(route),
 			"query-type": "A",
 		}
-		endpoint.URL = "1.1.1.1"
+		endpoint.Conditions = []string{"len([BODY]) == 0"}
 	} else {
 		endpoint.Conditions = []string{"[STATUS] == 200"}
 	}
@@ -104,12 +99,21 @@ func (h *HTTPRouteHandler) GetParentAnnotations(ctx context.Context, obj metav1.
 		return nil
 	}
 
+	gvr := schema.GroupVersionResource{
+		Group:    "gateway.networking.k8s.io",
+		Version:  "v1",
+		Resource: "gateways",
+	}
+	if parent.Group != nil {
+		gvr.Group = string(*parent.Group)
+	}
+
 	namespace := route.GetNamespace()
 	if parent.Namespace != nil {
 		namespace = string(*parent.Namespace)
 	}
 
-	parentResource, err := h.dynamicClient.Resource(h.gvr).Namespace(namespace).Get(ctx, string(parent.Name), metav1.GetOptions{})
+	parentResource, err := h.dynamicClient.Resource(gvr).Namespace(namespace).Get(ctx, string(parent.Name), metav1.GetOptions{})
 	if err != nil {
 		return nil
 	}
@@ -138,15 +142,14 @@ func referencesGateway(route *gatewayv1.HTTPRoute, gatewayName string) bool {
 
 // NewHTTPRouteController creates a controller for HTTPRoute resources
 func NewHTTPRouteController(stateManager *manager.Manager, dynamicClient dynamic.Interface) *Controller {
-	gvr := schema.GroupVersionResource{
-		Group:    "gateway.networking.k8s.io",
-		Version:  "v1",
-		Resource: "httproutes",
-	}
 	return &Controller{
-		gvr:           gvr,
+		gvr: schema.GroupVersionResource{
+			Group:    "gateway.networking.k8s.io",
+			Version:  "v1",
+			Resource: "httproutes",
+		},
 		options:       metav1.ListOptions{},
-		handler:       &HTTPRouteHandler{gvr: gvr, dynamicClient: dynamicClient},
+		handler:       &HTTPRouteHandler{dynamicClient: dynamicClient},
 		stateManager:  stateManager,
 		dynamicClient: dynamicClient,
 		convert: func(u *unstructured.Unstructured) (metav1.Object, error) {

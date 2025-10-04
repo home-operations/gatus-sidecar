@@ -66,10 +66,6 @@ func (h *ServiceHandler) ExtractURL(obj metav1.Object) string {
 }
 
 func (h *ServiceHandler) ApplyTemplate(cfg *config.Config, obj metav1.Object, endpoint *endpoint.Endpoint) {
-	if cfg.AutoGroup {
-		endpoint.Group = obj.GetNamespace()
-	}
-
 	endpoint.Conditions = []string{"[CONNECTED] == true"}
 }
 

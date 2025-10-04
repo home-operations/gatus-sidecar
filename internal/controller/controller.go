@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"maps"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -87,6 +86,7 @@ func (c *Controller) watchLoop(ctx context.Context, cfg *config.Config) error {
 func (c *Controller) handleEvent(ctx context.Context, cfg *config.Config, obj metav1.Object, eventType watch.EventType) {
 	name := obj.GetName()
 	namespace := obj.GetNamespace()
+	annotations := obj.GetAnnotations()
 	resource := c.gvr.Resource
 
 	key := fmt.Sprintf("%s:%s:%s", name, namespace, resource)
@@ -100,39 +100,46 @@ func (c *Controller) handleEvent(ctx context.Context, cfg *config.Config, obj me
 		return
 	}
 
-	// Get parent annotations (e.g. Gateways can provide annotations for HTTPRoutes), then merge in object annotations.
-	annotations := c.handler.GetParentAnnotations(ctx, obj)
-	if annotations == nil {
-		annotations = make(map[string]string)
-	}
-	maps.Copy(annotations, obj.GetAnnotations())
-
-	var templateData map[string]any
-
-	// Check for enabled annotation and template annotation
-	if annotations != nil {
-		if enabledValue, ok := annotations[cfg.EnabledAnnotation]; ok && enabledValue != "true" && enabledValue != "1" {
-			removed := c.stateManager.Remove(key)
-			if removed {
-				slog.Info("removed endpoint from state", "resource", resource, "name", name, "namespace", namespace)
-			}
-			return
-		}
-
-		if templateStr, ok := annotations[cfg.TemplateAnnotation]; ok && templateStr != "" {
-			if err := yaml.Unmarshal([]byte(templateStr), &templateData); err != nil {
-				slog.Error("failed to unmarshal template for resource", "resource", resource, "name", name, "namespace", namespace, "error", err)
-				return
-			}
-		}
-	}
-
 	// Get the URL from the resource
 	url := c.handler.ExtractURL(obj)
 	if url == "" {
 		slog.Warn("resource has no url", "resource", resource, "name", name, "namespace", namespace)
 		return
 	}
+
+	// Check for enabled annotation and template annotation
+	if enabledValue, ok := annotations[cfg.EnabledAnnotation]; ok && enabledValue != "true" && enabledValue != "1" {
+		removed := c.stateManager.Remove(key)
+		if removed {
+			slog.Info("removed endpoint from state", "resource", resource, "name", name, "namespace", namespace)
+		}
+		return
+	}
+
+	// Get parent annotations (e.g. Gateways can provide annotations for HTTPRoutes), then merge in object annotations.
+	parentAnnotations := c.handler.GetParentAnnotations(ctx, obj)
+	if parentAnnotations == nil {
+		parentAnnotations = make(map[string]string)
+	}
+
+	var templateData map[string]any
+
+	// Parse parent template data first
+	parentTemplateData, err := c.parseTemplateData(parentAnnotations, cfg.TemplateAnnotation)
+	if err != nil {
+		slog.Error("failed to unmarshal parent template for resource", "resource", resource, "name", name, "namespace", namespace, "error", err)
+		return
+	}
+
+	// Parse object template data
+	objectTemplateData, err := c.parseTemplateData(obj.GetAnnotations(), cfg.TemplateAnnotation)
+	if err != nil {
+		slog.Error("failed to unmarshal object template for resource", "resource", resource, "name", name, "namespace", namespace, "error", err)
+		return
+	}
+
+	// Deep merge parent and object template data
+	templateData = c.deepMergeTemplates(parentTemplateData, objectTemplateData)
 
 	// Internal home-ops opinionated "guarded" endpoint feature
 	guarded := templateData != nil && templateData["guarded"] != nil
@@ -158,4 +165,52 @@ func (c *Controller) handleEvent(ctx context.Context, cfg *config.Config, obj me
 	if changed {
 		slog.Info("updated endpoint in state", "resource", resource, "name", name, "namespace", namespace)
 	}
+}
+
+// parseTemplateData extracts and parses template data from annotations
+func (c *Controller) parseTemplateData(annotations map[string]string, annotationKey string) (map[string]any, error) {
+	templateStr, ok := annotations[annotationKey]
+	if !ok || templateStr == "" {
+		return nil, nil
+	}
+
+	var templateData map[string]any
+	if err := yaml.Unmarshal([]byte(templateStr), &templateData); err != nil {
+		return nil, err
+	}
+	return templateData, nil
+}
+
+// deepMergeTemplates recursively merges two template data maps, with the second map taking precedence
+func (c *Controller) deepMergeTemplates(parent, child map[string]any) map[string]any {
+	if parent == nil {
+		return child
+	}
+	if child == nil {
+		return parent
+	}
+
+	result := make(map[string]any)
+
+	// Copy all parent values first
+	for key, value := range parent {
+		result[key] = value
+	}
+
+	// Merge child values, recursively merging maps
+	for key, childValue := range child {
+		if parentValue, exists := result[key]; exists {
+			// If both values are maps, recursively merge them
+			if parentMap, parentIsMap := parentValue.(map[string]any); parentIsMap {
+				if childMap, childIsMap := childValue.(map[string]any); childIsMap {
+					result[key] = c.deepMergeTemplates(parentMap, childMap)
+					continue
+				}
+			}
+		}
+		// Otherwise, child value overwrites parent value
+		result[key] = childValue
+	}
+
+	return result
 }
