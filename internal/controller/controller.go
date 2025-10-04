@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"maps"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -20,7 +21,17 @@ import (
 	"github.com/home-operations/gatus-sidecar/internal/manager"
 )
 
-// Controller is a generic Kubernetes resource controller
+const (
+	httpsPrefix           = "https://"
+	httpPrefix            = "http://"
+	httpProtocol          = "http"
+	httpsProtocol         = "https"
+	dnsTestURL            = "1.1.1.1"
+	dnsEmptyBodyCondition = "len([BODY]) == 0"
+	dnsQueryType          = "A"
+	ingressCondition      = "[STATUS] == 200"
+)
+
 type Controller struct {
 	gvr           schema.GroupVersionResource
 	options       metav1.ListOptions
@@ -30,7 +41,10 @@ type Controller struct {
 	dynamicClient dynamic.Interface
 }
 
-// Run starts the controller watch loop
+func (c *Controller) GetResource() string {
+	return c.gvr.Resource
+}
+
 func (c *Controller) Run(ctx context.Context, cfg *config.Config) error {
 	for {
 		if err := c.watchLoop(ctx, cfg); err != nil {
@@ -44,10 +58,6 @@ func (c *Controller) Run(ctx context.Context, cfg *config.Config) error {
 	}
 }
 
-func (c *Controller) GetResource() string {
-	return c.gvr.Resource
-}
-
 func (c *Controller) watchLoop(ctx context.Context, cfg *config.Config) error {
 	w, err := c.dynamicClient.Resource(c.gvr).Namespace(cfg.Namespace).Watch(ctx, c.options)
 	if err != nil {
@@ -55,32 +65,36 @@ func (c *Controller) watchLoop(ctx context.Context, cfg *config.Config) error {
 	}
 	defer w.Stop()
 
-	ch := w.ResultChan()
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
-		case evt, ok := <-ch:
+		case evt, ok := <-w.ResultChan():
 			if !ok {
 				return fmt.Errorf("watch channel closed")
 			}
-
-			// Convert unstructured object to typed object
-			unstructuredObj, ok := evt.Object.(*unstructured.Unstructured)
-			if !ok {
-				slog.Error("unexpected object type", "type", fmt.Sprintf("%T", evt.Object))
-				continue
-			}
-
-			obj, err := c.convert(unstructuredObj)
-			if err != nil {
-				slog.Error("failed to convert object", "error", err)
-				continue
-			}
-
-			c.handleEvent(ctx, cfg, obj, evt.Type)
+			c.processEvent(ctx, cfg, evt)
 		}
 	}
+}
+
+func (c *Controller) processEvent(ctx context.Context, cfg *config.Config, evt watch.Event) {
+	obj, err := c.convertEvent(evt)
+	if err != nil {
+		slog.Error("failed to process event", "error", err)
+		return
+	}
+
+	c.handleEvent(ctx, cfg, obj, evt.Type)
+}
+
+func (c *Controller) convertEvent(evt watch.Event) (metav1.Object, error) {
+	unstructuredObj, ok := evt.Object.(*unstructured.Unstructured)
+	if !ok {
+		return nil, fmt.Errorf("unexpected object type: %T", evt.Object)
+	}
+
+	return c.convert(unstructuredObj)
 }
 
 func (c *Controller) handleEvent(ctx context.Context, cfg *config.Config, obj metav1.Object, eventType watch.EventType) {
@@ -88,86 +102,93 @@ func (c *Controller) handleEvent(ctx context.Context, cfg *config.Config, obj me
 	namespace := obj.GetNamespace()
 	annotations := obj.GetAnnotations()
 	resource := c.gvr.Resource
-
 	key := fmt.Sprintf("%s:%s:%s", name, namespace, resource)
 
-	// If the resource should not be processed or has been deleted, remove it from state
+	// Early returns for deletion or non-processable resources
 	if !c.handler.ShouldProcess(obj, cfg) || eventType == watch.Deleted {
-		removed := c.stateManager.Remove(key)
-		if removed {
-			slog.Info("removed endpoint from state", "resource", resource, "name", name, "namespace", namespace)
-		}
+		c.removeFromState(key, resource, name, namespace)
 		return
 	}
 
-	// Get the URL from the resource
+	// Validate URL availability
 	url := c.handler.ExtractURL(obj)
 	if url == "" {
 		slog.Warn("resource has no url", "resource", resource, "name", name, "namespace", namespace)
 		return
 	}
 
-	// Check for enabled annotation and template annotation
-	if enabledValue, ok := annotations[cfg.EnabledAnnotation]; ok && enabledValue != "true" && enabledValue != "1" {
-		removed := c.stateManager.Remove(key)
-		if removed {
-			slog.Info("removed endpoint from state", "resource", resource, "name", name, "namespace", namespace)
-		}
+	// Check if endpoint is explicitly disabled
+	if c.isEndpointDisabled(annotations, cfg) {
+		c.removeFromState(key, resource, name, namespace)
 		return
 	}
 
-	// Get parent annotations (e.g. Gateways can provide annotations for HTTPRoutes), then merge in object annotations.
-	parentAnnotations := c.handler.GetParentAnnotations(ctx, obj)
-	if parentAnnotations == nil {
-		parentAnnotations = make(map[string]string)
-	}
-
-	var templateData map[string]any
-
-	// Parse parent template data first
-	parentTemplateData, err := c.parseTemplateData(parentAnnotations, cfg.TemplateAnnotation)
+	// Process template data
+	templateData, err := c.buildTemplateData(ctx, obj, cfg)
 	if err != nil {
-		slog.Error("failed to unmarshal parent template for resource", "resource", resource, "name", name, "namespace", namespace, "error", err)
+		slog.Error("failed to build template data", "resource", resource, "name", name, "namespace", namespace, "error", err)
 		return
 	}
 
-	// Parse object template data
-	objectTemplateData, err := c.parseTemplateData(obj.GetAnnotations(), cfg.TemplateAnnotation)
-	if err != nil {
-		slog.Error("failed to unmarshal object template for resource", "resource", resource, "name", name, "namespace", namespace, "error", err)
-		return
-	}
-
-	// Deep merge parent and object template data
-	templateData = c.deepMergeTemplates(parentTemplateData, objectTemplateData)
-
-	// Internal home-ops opinionated "guarded" endpoint feature
-	guarded := templateData != nil && templateData["guarded"] != nil
-
-	// Create endpoint state with defaults
+	// Create and configure endpoint
 	endpoint := &endpoint.Endpoint{
 		Name:     name,
 		URL:      url,
 		Interval: cfg.DefaultInterval.String(),
-		Guarded:  guarded,
+		Guarded:  c.isGuardedEndpoint(templateData),
 	}
 
-	// Apply resource-specific template if available
 	c.handler.ApplyTemplate(cfg, obj, endpoint)
-
-	// Apply template overrides if present
 	if templateData != nil {
 		endpoint.ApplyTemplate(templateData)
 	}
 
 	// Update state
-	changed := c.stateManager.AddOrUpdate(key, endpoint)
-	if changed {
+	if changed := c.stateManager.AddOrUpdate(key, endpoint); changed {
 		slog.Info("updated endpoint in state", "resource", resource, "name", name, "namespace", namespace)
 	}
 }
 
-// parseTemplateData extracts and parses template data from annotations
+func (c *Controller) isEndpointDisabled(annotations map[string]string, cfg *config.Config) bool {
+	enabledValue, ok := annotations[cfg.EnabledAnnotation]
+	return ok && enabledValue != "true" && enabledValue != "1"
+}
+
+func (c *Controller) removeFromState(key, resource, name, namespace string) {
+	if removed := c.stateManager.Remove(key); removed {
+		slog.Info("removed endpoint from state", "resource", resource, "name", name, "namespace", namespace)
+	}
+}
+
+func (c *Controller) isGuardedEndpoint(templateData map[string]any) bool {
+	if templateData == nil {
+		return false
+	}
+	_, exists := templateData["guarded"]
+	return exists
+}
+
+func (c *Controller) buildTemplateData(ctx context.Context, obj metav1.Object, cfg *config.Config) (map[string]any, error) {
+	annotations := obj.GetAnnotations()
+
+	parentAnnotations := c.handler.GetParentAnnotations(ctx, obj)
+	if parentAnnotations == nil {
+		parentAnnotations = make(map[string]string)
+	}
+
+	parentTemplateData, err := c.parseTemplateData(parentAnnotations, cfg.TemplateAnnotation)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse parent template: %w", err)
+	}
+
+	objectTemplateData, err := c.parseTemplateData(annotations, cfg.TemplateAnnotation)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse object template: %w", err)
+	}
+
+	return c.deepMergeTemplates(parentTemplateData, objectTemplateData), nil
+}
+
 func (c *Controller) parseTemplateData(annotations map[string]string, annotationKey string) (map[string]any, error) {
 	templateStr, ok := annotations[annotationKey]
 	if !ok || templateStr == "" {
@@ -181,7 +202,6 @@ func (c *Controller) parseTemplateData(annotations map[string]string, annotation
 	return templateData, nil
 }
 
-// deepMergeTemplates recursively merges two template data maps, with the second map taking precedence
 func (c *Controller) deepMergeTemplates(parent, child map[string]any) map[string]any {
 	if parent == nil {
 		return child
@@ -191,26 +211,40 @@ func (c *Controller) deepMergeTemplates(parent, child map[string]any) map[string
 	}
 
 	result := make(map[string]any)
+	maps.Copy(result, parent)
 
-	// Copy all parent values first
-	for key, value := range parent {
-		result[key] = value
-	}
-
-	// Merge child values, recursively merging maps
 	for key, childValue := range child {
 		if parentValue, exists := result[key]; exists {
-			// If both values are maps, recursively merge them
-			if parentMap, parentIsMap := parentValue.(map[string]any); parentIsMap {
-				if childMap, childIsMap := childValue.(map[string]any); childIsMap {
+			if parentMap, ok := parentValue.(map[string]any); ok {
+				if childMap, ok := childValue.(map[string]any); ok {
 					result[key] = c.deepMergeTemplates(parentMap, childMap)
 					continue
 				}
 			}
 		}
-		// Otherwise, child value overwrites parent value
 		result[key] = childValue
 	}
 
 	return result
+}
+
+func hasRequiredAnnotations(obj metav1.Object, cfg *config.Config) bool {
+	annotations := obj.GetAnnotations()
+	if annotations == nil {
+		return false
+	}
+
+	_, hasEnabledAnnotation := annotations[cfg.EnabledAnnotation]
+	_, hasTemplateAnnotation := annotations[cfg.TemplateAnnotation]
+
+	return hasEnabledAnnotation || hasTemplateAnnotation
+}
+
+func applyGuardedTemplate(dnsQueryName string, endpoint *endpoint.Endpoint) {
+	endpoint.URL = dnsTestURL
+	endpoint.DNS = map[string]any{
+		"query-name": dnsQueryName,
+		"query-type": dnsQueryType,
+	}
+	endpoint.Conditions = []string{dnsEmptyBodyCondition}
 }

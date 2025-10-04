@@ -18,6 +18,14 @@ import (
 	"github.com/home-operations/gatus-sidecar/internal/manager"
 )
 
+const (
+	serviceAPIGroup      = ""
+	serviceAPIVersion    = "v1"
+	servicesResource     = "services"
+	serviceClusterDomain = "svc"
+	serviceCondition     = "[CONNECTED] == true"
+)
+
 // ServiceHandler handles Service resources
 type ServiceHandler struct{}
 
@@ -30,43 +38,40 @@ func (h *ServiceHandler) ShouldProcess(obj metav1.Object, cfg *config.Config) bo
 		return false
 	}
 
-	// If AutoService is disabled, only process if it has the annotation
-	if !cfg.AutoService {
-		annotations := service.GetAnnotations()
-		if annotations == nil {
-			return false
-		}
-
-		_, hasEnabledAnnotation := annotations[cfg.EnabledAnnotation]
-		_, hasTemplateAnnotation := annotations[cfg.TemplateAnnotation]
-
-		return hasEnabledAnnotation || hasTemplateAnnotation
+	// If AutoService is enabled, process all services
+	if cfg.AutoService {
+		return true
 	}
 
-	return true
+	// If AutoService is disabled, only process if it has required annotations
+	return hasRequiredAnnotations(service, cfg)
 }
 
 func (h *ServiceHandler) ExtractURL(obj metav1.Object) string {
-	service, ok := obj.(*corev1.Service)
-	if !ok {
-		return ""
+	if service, ok := obj.(*corev1.Service); ok {
+		if len(service.Spec.Ports) == 0 {
+			return ""
+		}
+		return h.buildServiceURL(service)
 	}
 
-	// Construct the URL using the first port defined in the Service
-	if len(service.Spec.Ports) == 0 {
-		return ""
-	}
+	return ""
+}
 
-	// Example: tcp://service-name.namespace.svc:1234
+func (h *ServiceHandler) buildServiceURL(service *corev1.Service) string {
 	port := service.Spec.Ports[0].Port
 	protocol := strings.ToLower(string(service.Spec.Ports[0].Protocol))
-	url := fmt.Sprintf("%s://%s.%s.svc:%d", protocol, service.Name, service.Namespace, port)
 
-	return url
+	return fmt.Sprintf("%s://%s.%s.%s:%d",
+		protocol,
+		service.Name,
+		service.Namespace,
+		serviceClusterDomain,
+		port)
 }
 
 func (h *ServiceHandler) ApplyTemplate(cfg *config.Config, obj metav1.Object, endpoint *endpoint.Endpoint) {
-	endpoint.Conditions = []string{"[CONNECTED] == true"}
+	endpoint.Conditions = []string{serviceCondition}
 }
 
 func (h *ServiceHandler) GetParentAnnotations(ctx context.Context, obj metav1.Object) map[string]string {
@@ -77,20 +82,22 @@ func (h *ServiceHandler) GetParentAnnotations(ctx context.Context, obj metav1.Ob
 func NewServiceController(stateManager *manager.Manager, dynamicClient dynamic.Interface) *Controller {
 	return &Controller{
 		gvr: schema.GroupVersionResource{
-			Group:    "",
-			Version:  "v1",
-			Resource: "services",
+			Group:    serviceAPIGroup,
+			Version:  serviceAPIVersion,
+			Resource: servicesResource,
 		},
 		options:       metav1.ListOptions{},
 		handler:       &ServiceHandler{},
 		stateManager:  stateManager,
 		dynamicClient: dynamicClient,
-		convert: func(u *unstructured.Unstructured) (metav1.Object, error) {
-			service := &corev1.Service{}
-			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, service); err != nil {
-				return nil, fmt.Errorf("failed to convert to Service: %w", err)
-			}
-			return service, nil
-		},
+		convert:       convertUnstructuredToService,
 	}
+}
+
+func convertUnstructuredToService(u *unstructured.Unstructured) (metav1.Object, error) {
+	service := &corev1.Service{}
+	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, service); err != nil {
+		return nil, fmt.Errorf("failed to convert to Service: %w", err)
+	}
+	return service, nil
 }

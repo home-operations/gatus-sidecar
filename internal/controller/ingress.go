@@ -19,6 +19,13 @@ import (
 	"github.com/home-operations/gatus-sidecar/internal/manager"
 )
 
+const (
+	networkingAPIGroup     = "networking.k8s.io"
+	networkingAPIVersion   = "v1"
+	ingressesResource      = "ingresses"
+	ingressClassAnnotation = "kubernetes.io/ingress.class"
+)
+
 // IngressHandler handles Ingress resources
 type IngressHandler struct{}
 
@@ -31,24 +38,18 @@ func (h *IngressHandler) ShouldProcess(obj metav1.Object, cfg *config.Config) bo
 		return false
 	}
 
-	if cfg.IngressClass != "" && !hasIngressClass(ingress, cfg.IngressClass) {
+	// Check ingress class filter first (most restrictive)
+	if cfg.IngressClass != "" && !h.hasIngressClass(ingress, cfg.IngressClass) {
 		return false
 	}
 
-	// If AutoIngress is disabled, only process if it has the annotation
-	if !cfg.AutoIngress {
-		annotations := ingress.GetAnnotations()
-		if annotations == nil {
-			return false
-		}
-
-		_, hasEnabledAnnotation := annotations[cfg.EnabledAnnotation]
-		_, hasTemplateAnnotation := annotations[cfg.TemplateAnnotation]
-
-		return hasEnabledAnnotation || hasTemplateAnnotation
+	// If AutoIngress is enabled, process all ingresses (that passed class filter)
+	if cfg.AutoIngress {
+		return true
 	}
 
-	return true
+	// If AutoIngress is disabled, only process if it has required annotations
+	return hasRequiredAnnotations(ingress, cfg)
 }
 
 func (h *IngressHandler) ExtractURL(obj metav1.Object) string {
@@ -57,39 +58,34 @@ func (h *IngressHandler) ExtractURL(obj metav1.Object) string {
 		return ""
 	}
 
-	url := firstIngressHostname(ingress)
-	if url == "" {
+	hostname := h.getFirstHostname(ingress)
+	if hostname == "" {
 		return ""
 	}
 
-	// Determine protocol based on TLS configuration
-	protocol := "http"
-	if hasIngressTLS(ingress, url) {
-		protocol = "https"
+	protocol := h.determineProtocol(ingress, hostname)
+
+	if !strings.HasPrefix(hostname, httpPrefix) {
+		return fmt.Sprintf("%s://%s", protocol, hostname)
 	}
 
-	if !strings.HasPrefix(url, "http") {
-		url = fmt.Sprintf("%s://%s", protocol, url)
-	}
+	return hostname
+}
 
-	return url
+func (h *IngressHandler) determineProtocol(ingress *networkingv1.Ingress, hostname string) string {
+	if h.hasIngressTLS(ingress, hostname) {
+		return httpsProtocol
+	}
+	return httpProtocol
 }
 
 func (h *IngressHandler) ApplyTemplate(cfg *config.Config, obj metav1.Object, endpoint *endpoint.Endpoint) {
 	if endpoint.Guarded {
-		ingress, ok := obj.(*networkingv1.Ingress)
-		if !ok {
-			return
+		if ingress, ok := obj.(*networkingv1.Ingress); ok {
+			applyGuardedTemplate(h.getFirstHostname(ingress), endpoint)
 		}
-
-		endpoint.URL = "1.1.1.1"
-		endpoint.DNS = map[string]any{
-			"query-name": firstIngressHostname(ingress),
-			"query-type": "A",
-		}
-		endpoint.Conditions = []string{"len([BODY]) == 0"}
 	} else {
-		endpoint.Conditions = []string{"[STATUS] == 200"}
+		endpoint.Conditions = []string{ingressCondition}
 	}
 }
 
@@ -97,32 +93,29 @@ func (h *IngressHandler) GetParentAnnotations(ctx context.Context, obj metav1.Ob
 	return nil
 }
 
-// Helper functions for Ingress
-func firstIngressHostname(ingress *networkingv1.Ingress) string {
+func (h *IngressHandler) getFirstHostname(ingress *networkingv1.Ingress) string {
 	for _, rule := range ingress.Spec.Rules {
 		if rule.Host != "" {
 			return rule.Host
 		}
 	}
-
 	return ""
 }
 
-func hasIngressTLS(ingress *networkingv1.Ingress, hostname string) bool {
+func (h *IngressHandler) hasIngressTLS(ingress *networkingv1.Ingress, hostname string) bool {
 	for _, tls := range ingress.Spec.TLS {
 		if slices.Contains(tls.Hosts, hostname) {
 			return true
 		}
 	}
-
 	return false
 }
 
-func hasIngressClass(ingress *networkingv1.Ingress, ingressClass string) bool {
-	return getIngressClass(ingress) == ingressClass
+func (h *IngressHandler) hasIngressClass(ingress *networkingv1.Ingress, ingressClass string) bool {
+	return h.getIngressClass(ingress) == ingressClass
 }
 
-func getIngressClass(ingress *networkingv1.Ingress) string {
+func (h *IngressHandler) getIngressClass(ingress *networkingv1.Ingress) string {
 	// Check spec.ingressClassName first (preferred)
 	if ingress.Spec.IngressClassName != nil {
 		return *ingress.Spec.IngressClassName
@@ -130,7 +123,7 @@ func getIngressClass(ingress *networkingv1.Ingress) string {
 
 	// Fallback to annotation (legacy)
 	if ingress.Annotations != nil {
-		if class, ok := ingress.Annotations["kubernetes.io/ingress.class"]; ok {
+		if class, ok := ingress.Annotations[ingressClassAnnotation]; ok {
 			return class
 		}
 	}
@@ -142,20 +135,22 @@ func getIngressClass(ingress *networkingv1.Ingress) string {
 func NewIngressController(stateManager *manager.Manager, dynamicClient dynamic.Interface) *Controller {
 	return &Controller{
 		gvr: schema.GroupVersionResource{
-			Group:    "networking.k8s.io",
-			Version:  "v1",
-			Resource: "ingresses",
+			Group:    networkingAPIGroup,
+			Version:  networkingAPIVersion,
+			Resource: ingressesResource,
 		},
 		options:       metav1.ListOptions{},
 		handler:       &IngressHandler{},
 		stateManager:  stateManager,
 		dynamicClient: dynamicClient,
-		convert: func(u *unstructured.Unstructured) (metav1.Object, error) {
-			ingress := &networkingv1.Ingress{}
-			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, ingress); err != nil {
-				return nil, fmt.Errorf("failed to convert to Ingress: %w", err)
-			}
-			return ingress, nil
-		},
+		convert:       convertUnstructuredToIngress,
 	}
+}
+
+func convertUnstructuredToIngress(u *unstructured.Unstructured) (metav1.Object, error) {
+	ingress := &networkingv1.Ingress{}
+	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, ingress); err != nil {
+		return nil, fmt.Errorf("failed to convert to Ingress: %w", err)
+	}
+	return ingress, nil
 }

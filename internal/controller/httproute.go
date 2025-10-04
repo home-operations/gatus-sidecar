@@ -18,6 +18,14 @@ import (
 	"github.com/home-operations/gatus-sidecar/internal/manager"
 )
 
+const (
+	gatewayAPIGroup    = "gateway.networking.k8s.io"
+	gatewayAPIVersion  = "v1"
+	httproutesResource = "httproutes"
+	gatewaysResource   = "gateways"
+	gatewayKind        = "Gateway"
+)
+
 // HTTPRouteHandler handles HTTPRoute resources
 type HTTPRouteHandler struct {
 	dynamicClient dynamic.Interface
@@ -32,24 +40,18 @@ func (h *HTTPRouteHandler) ShouldProcess(obj metav1.Object, cfg *config.Config) 
 		return false
 	}
 
-	if cfg.GatewayName != "" && !referencesGateway(route, cfg.GatewayName) {
+	// Check gateway filter first (most restrictive)
+	if cfg.GatewayName != "" && !h.referencesGateway(route, cfg.GatewayName) {
 		return false
 	}
 
-	// If AutoHTTPRoute is disabled, only process if it has the annotation
-	if !cfg.AutoHTTPRoute {
-		annotations := route.GetAnnotations()
-		if annotations == nil {
-			return false
-		}
-
-		_, hasEnabledAnnotation := annotations[cfg.EnabledAnnotation]
-		_, hasTemplateAnnotation := annotations[cfg.TemplateAnnotation]
-
-		return hasEnabledAnnotation || hasTemplateAnnotation
+	// If AutoHTTPRoute is enabled, process all routes (that passed gateway filter)
+	if cfg.AutoHTTPRoute {
+		return true
 	}
 
-	return true
+	// If AutoHTTPRoute is disabled, only process if it has required annotations
+	return hasRequiredAnnotations(obj, cfg)
 }
 
 func (h *HTTPRouteHandler) ExtractURL(obj metav1.Object) string {
@@ -58,33 +60,25 @@ func (h *HTTPRouteHandler) ExtractURL(obj metav1.Object) string {
 		return ""
 	}
 
-	url := firstHTTPRouteHostname(route)
-	if url == "" {
+	hostname := h.getFirstHostname(route)
+	if hostname == "" {
 		return ""
 	}
 
-	if !strings.HasPrefix(url, "http") {
-		url = "https://" + url
+	if !strings.HasPrefix(hostname, httpPrefix) {
+		return httpsPrefix + hostname
 	}
 
-	return url
+	return hostname
 }
 
 func (h *HTTPRouteHandler) ApplyTemplate(cfg *config.Config, obj metav1.Object, endpoint *endpoint.Endpoint) {
 	if endpoint.Guarded {
-		route, ok := obj.(*gatewayv1.HTTPRoute)
-		if !ok {
-			return
+		if route, ok := obj.(*gatewayv1.HTTPRoute); ok {
+			applyGuardedTemplate(h.getFirstHostname(route), endpoint)
 		}
-
-		endpoint.URL = "1.1.1.1"
-		endpoint.DNS = map[string]any{
-			"query-name": firstHTTPRouteHostname(route),
-			"query-type": "A",
-		}
-		endpoint.Conditions = []string{"len([BODY]) == 0"}
 	} else {
-		endpoint.Conditions = []string{"[STATUS] == 200"}
+		endpoint.Conditions = []string{ingressCondition}
 	}
 }
 
@@ -95,14 +89,18 @@ func (h *HTTPRouteHandler) GetParentAnnotations(ctx context.Context, obj metav1.
 	}
 
 	parent := route.Spec.ParentRefs[0]
-	if parent.Kind != nil && *parent.Kind != "Gateway" {
+	if parent.Kind != nil && *parent.Kind != gatewayKind {
 		return nil
 	}
 
+	return h.fetchParentAnnotations(ctx, route, parent)
+}
+
+func (h *HTTPRouteHandler) fetchParentAnnotations(ctx context.Context, route *gatewayv1.HTTPRoute, parent gatewayv1.ParentReference) map[string]string {
 	gvr := schema.GroupVersionResource{
-		Group:    "gateway.networking.k8s.io",
-		Version:  "v1",
-		Resource: "gateways",
+		Group:    gatewayAPIGroup,
+		Version:  gatewayAPIVersion,
+		Resource: gatewaysResource,
 	}
 	if parent.Group != nil {
 		gvr.Group = string(*parent.Group)
@@ -121,22 +119,19 @@ func (h *HTTPRouteHandler) GetParentAnnotations(ctx context.Context, obj metav1.
 	return parentResource.GetAnnotations()
 }
 
-// Helper functions for HTTPRoute
-func firstHTTPRouteHostname(route *gatewayv1.HTTPRoute) string {
-	for _, h := range route.Spec.Hostnames {
-		return string(h)
+func (h *HTTPRouteHandler) getFirstHostname(route *gatewayv1.HTTPRoute) string {
+	if len(route.Spec.Hostnames) == 0 {
+		return ""
 	}
-
-	return ""
+	return string(route.Spec.Hostnames[0])
 }
 
-func referencesGateway(route *gatewayv1.HTTPRoute, gatewayName string) bool {
-	for _, p := range route.Spec.ParentRefs {
-		if p.Name == gatewayv1.ObjectName(gatewayName) {
+func (h *HTTPRouteHandler) referencesGateway(route *gatewayv1.HTTPRoute, gatewayName string) bool {
+	for _, parent := range route.Spec.ParentRefs {
+		if parent.Name == gatewayv1.ObjectName(gatewayName) {
 			return true
 		}
 	}
-
 	return false
 }
 
@@ -144,20 +139,22 @@ func referencesGateway(route *gatewayv1.HTTPRoute, gatewayName string) bool {
 func NewHTTPRouteController(stateManager *manager.Manager, dynamicClient dynamic.Interface) *Controller {
 	return &Controller{
 		gvr: schema.GroupVersionResource{
-			Group:    "gateway.networking.k8s.io",
-			Version:  "v1",
-			Resource: "httproutes",
+			Group:    gatewayAPIGroup,
+			Version:  gatewayAPIVersion,
+			Resource: httproutesResource,
 		},
 		options:       metav1.ListOptions{},
 		handler:       &HTTPRouteHandler{dynamicClient: dynamicClient},
 		stateManager:  stateManager,
 		dynamicClient: dynamicClient,
-		convert: func(u *unstructured.Unstructured) (metav1.Object, error) {
-			route := &gatewayv1.HTTPRoute{}
-			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, route); err != nil {
-				return nil, fmt.Errorf("failed to convert to HTTPRoute: %w", err)
-			}
-			return route, nil
-		},
+		convert:       convertUnstructuredToHTTPRoute,
 	}
+}
+
+func convertUnstructuredToHTTPRoute(u *unstructured.Unstructured) (metav1.Object, error) {
+	route := &gatewayv1.HTTPRoute{}
+	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, route); err != nil {
+		return nil, fmt.Errorf("failed to convert to HTTPRoute: %w", err)
+	}
+	return route, nil
 }
