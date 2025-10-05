@@ -17,28 +17,29 @@ import (
 
 	"github.com/home-operations/gatus-sidecar/internal/config"
 	"github.com/home-operations/gatus-sidecar/internal/endpoint"
-	"github.com/home-operations/gatus-sidecar/internal/handler"
-	"github.com/home-operations/gatus-sidecar/internal/manager"
-)
-
-const (
-	httpsPrefix           = "https://"
-	httpPrefix            = "http://"
-	httpProtocol          = "http"
-	httpsProtocol         = "https"
-	dnsTestURL            = "1.1.1.1"
-	dnsEmptyBodyCondition = "len([BODY]) == 0"
-	dnsQueryType          = "A"
-	ingressCondition      = "[STATUS] == 200"
+	"github.com/home-operations/gatus-sidecar/internal/resources"
+	"github.com/home-operations/gatus-sidecar/internal/state"
 )
 
 type Controller struct {
 	gvr           schema.GroupVersionResource
 	options       metav1.ListOptions
-	handler       handler.ResourceHandler
+	handler       resources.ResourceHandler
 	convert       func(*unstructured.Unstructured) (metav1.Object, error)
-	stateManager  *manager.Manager
+	stateManager  *state.Manager
 	dynamicClient dynamic.Interface
+}
+
+// New creates a controller using a ResourceDefinition
+func New(definition *resources.ResourceDefinition, stateManager *state.Manager, dynamicClient dynamic.Interface) *Controller {
+	return &Controller{
+		gvr:           definition.GVR,
+		options:       metav1.ListOptions{},
+		handler:       resources.NewHandler(definition, dynamicClient),
+		stateManager:  stateManager,
+		dynamicClient: dynamicClient,
+		convert:       definition.ConvertFunc,
+	}
 }
 
 func (c *Controller) GetResource() string {
@@ -226,25 +227,4 @@ func (c *Controller) deepMergeTemplates(parent, child map[string]any) map[string
 	}
 
 	return result
-}
-
-func hasRequiredAnnotations(obj metav1.Object, cfg *config.Config) bool {
-	annotations := obj.GetAnnotations()
-	if annotations == nil {
-		return false
-	}
-
-	_, hasEnabledAnnotation := annotations[cfg.EnabledAnnotation]
-	_, hasTemplateAnnotation := annotations[cfg.TemplateAnnotation]
-
-	return hasEnabledAnnotation || hasTemplateAnnotation
-}
-
-func applyGuardedTemplate(dnsQueryName string, endpoint *endpoint.Endpoint) {
-	endpoint.URL = dnsTestURL
-	endpoint.DNS = map[string]any{
-		"query-name": dnsQueryName,
-		"query-type": dnsQueryType,
-	}
-	endpoint.Conditions = []string{dnsEmptyBodyCondition}
 }
