@@ -23,9 +23,6 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	// Create a single shared state manager
-	stateManager := state.NewManager(cfg.Output)
-
 	restCfg, err := rest.InClusterConfig()
 	if err != nil {
 		slog.Error("get in-cluster config", "error", err)
@@ -38,11 +35,30 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Register default resource types
-	controllers := []*controller.Controller{
-		controller.New(ingress.Definition(), stateManager, dc),
-		controller.New(httproute.Definition(), stateManager, dc),
-		controller.New(service.Definition(), stateManager, dc),
+	// Create a single shared state manager
+	stateManager := state.NewManager(cfg.Output)
+
+	// Initialize controllers slice
+	controllers := []*controller.Controller{}
+
+	// Determine if default controllers should be enabled
+	defaultControllers := !cfg.EnableHTTPRoute && !cfg.EnableIngress && !cfg.EnableService
+
+	// Conditionally register controllers based on config
+	if cfg.EnableHTTPRoute || cfg.AutoHTTPRoute || defaultControllers {
+		controllers = append(controllers, controller.New(httproute.Definition(), stateManager, dc))
+	}
+	if cfg.EnableIngress || cfg.AutoIngress || defaultControllers {
+		controllers = append(controllers, controller.New(ingress.Definition(), stateManager, dc))
+	}
+	if cfg.EnableService || cfg.AutoService || defaultControllers {
+		controllers = append(controllers, controller.New(service.Definition(), stateManager, dc))
+	}
+
+	// If no controllers are enabled, log a warning and exit
+	if len(controllers) == 0 {
+		slog.Warn("No controllers enabled. Exiting.")
+		return
 	}
 
 	// Run all controllers concurrently
@@ -76,10 +92,13 @@ func runControllers(ctx context.Context, cfg *config.Config, controllers []*cont
 	}()
 
 	// Return the first error encountered
-	for err := range errChan {
+	select {
+	case err := <-errChan:
 		if err != nil {
 			return err
 		}
+	case <-ctx.Done():
+		return ctx.Err()
 	}
 
 	return nil
