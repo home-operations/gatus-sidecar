@@ -42,10 +42,7 @@ func main() {
 	controllers := []*controller.Controller{}
 
 	// Determine if default controllers should be enabled
-	defaultControllers := false
-	if !cfg.EnableHTTPRoute && !cfg.EnableIngress && !cfg.EnableService {
-		defaultControllers = true
-	}
+	defaultControllers := !cfg.EnableHTTPRoute && !cfg.EnableIngress && !cfg.EnableService
 
 	// Conditionally register controllers based on config
 	if cfg.EnableHTTPRoute || cfg.AutoHTTPRoute || defaultControllers {
