@@ -24,6 +24,7 @@ type Config struct {
 
 func Load() *Config {
 	cfg := &Config{}
+
 	flag.StringVar(&cfg.Namespace, "namespace", "", "Namespace to watch (empty for all)")
 	flag.StringVar(&cfg.GatewayName, "gateway-name", "", "Gateway name to filter HTTPRoutes (optional)")
 	flag.StringVar(&cfg.IngressClass, "ingress-class", "", "Ingress class to filter Ingresses (optional)")
@@ -37,6 +38,9 @@ func Load() *Config {
 	flag.DurationVar(&cfg.DefaultInterval, "default-interval", time.Minute, "Default interval value for endpoints")
 	flag.StringVar(&cfg.TemplateAnnotation, "annotation-config", "gatus.home-operations.com/endpoint", "Annotation key for YAML config override")
 	flag.StringVar(&cfg.EnabledAnnotation, "annotation-enabled", "gatus.home-operations.com/enabled", "Annotation key for enabling/disabling resource processing")
+
+	flag.CommandLine.Init("", flag.ExitOnError)
 	flag.Parse()
+
 	return cfg
 }
