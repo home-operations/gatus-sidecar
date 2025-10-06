@@ -47,6 +47,9 @@ gatus-sidecar [options]
 | `--namespace` | `""` | Namespace to watch (empty for all namespaces) |
 | `--gateway-name` | `""` | Gateway name to filter HTTPRoutes |
 | `--ingress-class` | `""` | Ingress class to filter Ingresses |
+| `--enable-httproute` | `false` | Enable HTTPRoute endpoint creation |
+| `--enable-ingress` | `false` | Enable Ingress endpoint creation |
+| `--enable-service` | `false` | Enable Service endpoint creation |
 | `--auto-httproute` | `false` | Automatically create endpoints for HTTPRoutes |
 | `--auto-ingress` | `false` | Automatically create endpoints for Ingresses |
 | `--auto-service` | `false` | Automatically create endpoints for Services |
