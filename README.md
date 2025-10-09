@@ -400,7 +400,7 @@ go build -o gatus-sidecar cmd/root.go
 The project includes comprehensive controller logic for handling multiple resource types:
 
 - **HTTPRoute Controller**: Monitors Gateway API HTTPRoute resources with parent Gateway annotation inheritance
-- **Ingress Controller**: Monitors traditional Kubernetes Ingress resources  
+- **Ingress Controller**: Monitors traditional Kubernetes Ingress resources with parent IngressClass annotation inheritance
 - **Service Controller**: Monitors Kubernetes Service resources for infrastructure monitoring
 - **State Manager**: Centralizes endpoint state management and YAML generation
 
@@ -436,7 +436,7 @@ go build -o gatus-sidecar cmd/root.go
 The sidecar operates by:
 
 1. **👀 Watching** Multiple Kubernetes resource types via the API server
-2. **🔗 Inheriting** Annotations from parent resources (Gateway → HTTPRoute)
+2. **🔗 Inheriting** Annotations from parent resources (Gateway → HTTPRoute, IngressClass → Ingress)
 3. **⚡ Processing** Resource events (create, update, delete) in real-time
 4. **🎛️ Filtering** Resources based on configuration flags and annotations
 5. **📝 Generating** Gatus configuration files in YAML format
