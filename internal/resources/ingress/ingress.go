@@ -1,6 +1,7 @@
 package ingress
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"slices"
@@ -9,6 +10,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/dynamic"
 
 	"github.com/home-operations/gatus-sidecar/internal/config"
 	"github.com/home-operations/gatus-sidecar/internal/endpoint"
@@ -29,13 +31,14 @@ func Definition() *resources.ResourceDefinition {
 			Version:  "v1",
 			Resource: "ingresses",
 		},
-		TargetType:     reflect.TypeOf(networkingv1.Ingress{}),
-		ConvertFunc:    resources.CreateConvertFunc(reflect.TypeOf(networkingv1.Ingress{})),
-		AutoConfigFunc: func(cfg *config.Config) bool { return cfg.AutoIngress },
-		FilterFunc:     filterFunc,
-		URLExtractor:   urlExtractor,
-		ConditionFunc:  conditionFunc,
-		GuardedFunc:    guardedFunc,
+		TargetType:      reflect.TypeOf(networkingv1.Ingress{}),
+		ConvertFunc:     resources.CreateConvertFunc(reflect.TypeOf(networkingv1.Ingress{})),
+		AutoConfigFunc:  func(cfg *config.Config) bool { return cfg.AutoIngress },
+		FilterFunc:      filterFunc,
+		URLExtractor:    urlExtractor,
+		ConditionFunc:   conditionFunc,
+		GuardedFunc:     guardedFunc,
+		ParentExtractor: parentExtractor,
 	}
 }
 
@@ -120,17 +123,44 @@ func hasTLS(ingress *networkingv1.Ingress, hostname string) bool {
 }
 
 func hasIngressClass(ingress *networkingv1.Ingress, ingressClass string) bool {
-	// Check spec.ingressClassName first (preferred)
-	if ingress.Spec.IngressClassName != nil && *ingress.Spec.IngressClassName == ingressClass {
-		return true
-	}
+	return getIngressClass(ingress) == ingressClass
+}
 
+func getIngressClass(ingress *networkingv1.Ingress) string {
+	// Check spec.ingressClassName first (preferred)
+	if ingress.Spec.IngressClassName != nil {
+		return *ingress.Spec.IngressClassName
+	}
 	// Fallback to annotation (legacy)
 	if ingress.Annotations != nil {
 		if class, ok := ingress.Annotations["kubernetes.io/ingress.class"]; ok {
-			return class == ingressClass
+			return class
 		}
 	}
+	return ""
+}
 
-	return false
+func parentExtractor(ctx context.Context, obj metav1.Object, client dynamic.Interface) map[string]string {
+	ingress, ok := obj.(*networkingv1.Ingress)
+	if !ok {
+		return nil
+	}
+
+	className := getIngressClass(ingress)
+	if className == "" {
+		return nil
+	}
+
+	gvr := schema.GroupVersionResource{
+		Group:    "networking.k8s.io",
+		Version:  "v1",
+		Resource: "ingressclasses",
+	}
+
+	parentResource, err := client.Resource(gvr).Get(ctx, className, metav1.GetOptions{})
+	if err != nil {
+		return nil
+	}
+
+	return parentResource.GetAnnotations()
 }
