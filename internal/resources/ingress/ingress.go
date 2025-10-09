@@ -31,13 +31,14 @@ func Definition() *resources.ResourceDefinition {
 			Version:  "v1",
 			Resource: "ingresses",
 		},
-		TargetType:     reflect.TypeOf(networkingv1.Ingress{}),
-		ConvertFunc:    resources.CreateConvertFunc(reflect.TypeOf(networkingv1.Ingress{})),
-		AutoConfigFunc: func(cfg *config.Config) bool { return cfg.AutoIngress },
-		FilterFunc:     filterFunc,
-		URLExtractor:   urlExtractor,
-		ConditionFunc:  conditionFunc,
-		GuardedFunc:    guardedFunc,
+		TargetType:      reflect.TypeOf(networkingv1.Ingress{}),
+		ConvertFunc:     resources.CreateConvertFunc(reflect.TypeOf(networkingv1.Ingress{})),
+		AutoConfigFunc:  func(cfg *config.Config) bool { return cfg.AutoIngress },
+		FilterFunc:      filterFunc,
+		URLExtractor:    urlExtractor,
+		ConditionFunc:   conditionFunc,
+		GuardedFunc:     guardedFunc,
+		ParentExtractor: parentExtractor,
 	}
 }
 
