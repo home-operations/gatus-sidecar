@@ -28,7 +28,7 @@ func NewManager(outputFile string) *Manager {
 }
 
 // AddOrUpdate adds or updates an endpoint and writes state if changed
-func (m *Manager) AddOrUpdate(key string, endpoint *endpoint.Endpoint) bool {
+func (m *Manager) AddOrUpdate(key string, endpoint *endpoint.Endpoint, skipWrite bool) bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -39,6 +39,12 @@ func (m *Manager) AddOrUpdate(key string, endpoint *endpoint.Endpoint) bool {
 	}
 
 	m.endpoints[key] = endpoint
+
+	// Write state unless skipped
+	if skipWrite {
+		return true // Change detected
+	}
+
 	m.writeState()
 	return true // Change detected
 }

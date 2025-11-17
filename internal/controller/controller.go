@@ -47,6 +47,12 @@ func (c *Controller) GetResource() string {
 }
 
 func (c *Controller) Run(ctx context.Context, cfg *config.Config) error {
+	// Initial listing to populate state
+	if err := c.initialList(ctx, cfg); err != nil {
+		return fmt.Errorf("initial list failed for %s: %w", c.gvr.Resource, err)
+	}
+
+	// Watch loop
 	for {
 		if err := c.watchLoop(ctx, cfg); err != nil {
 			slog.Error("watch loop error", "error", err)
@@ -57,6 +63,27 @@ func (c *Controller) Run(ctx context.Context, cfg *config.Config) error {
 		case <-time.After(5 * time.Second):
 		}
 	}
+}
+
+func (c *Controller) initialList(ctx context.Context, cfg *config.Config) error {
+	list, err := c.dynamicClient.Resource(c.gvr).Namespace(cfg.Namespace).List(ctx, c.options)
+	if err != nil {
+		return fmt.Errorf("list %s: %w", c.gvr.Resource, err)
+	}
+
+	for i, item := range list.Items {
+		obj, err := c.convert(&item)
+		if err != nil {
+			slog.Error("failed to convert resource", "resource", c.gvr.Resource, "error", err)
+			continue
+		}
+
+		// Skip write for all but last to reduce I/O
+		isNotLast := i != len(list.Items)-1
+		c.handleEvent(ctx, cfg, obj, watch.Added, isNotLast)
+	}
+
+	return nil
 }
 
 func (c *Controller) watchLoop(ctx context.Context, cfg *config.Config) error {
@@ -86,7 +113,7 @@ func (c *Controller) processEvent(ctx context.Context, cfg *config.Config, evt w
 		return
 	}
 
-	c.handleEvent(ctx, cfg, obj, evt.Type)
+	c.handleEvent(ctx, cfg, obj, evt.Type, false)
 }
 
 func (c *Controller) convertEvent(evt watch.Event) (metav1.Object, error) {
@@ -98,12 +125,12 @@ func (c *Controller) convertEvent(evt watch.Event) (metav1.Object, error) {
 	return c.convert(unstructuredObj)
 }
 
-func (c *Controller) handleEvent(ctx context.Context, cfg *config.Config, obj metav1.Object, eventType watch.EventType) {
+func (c *Controller) handleEvent(ctx context.Context, cfg *config.Config, obj metav1.Object, eventType watch.EventType, skipWrite bool) {
 	name := obj.GetName()
 	namespace := obj.GetNamespace()
 	annotations := obj.GetAnnotations()
 	resource := c.gvr.Resource
-	key := fmt.Sprintf("%s:%s:%s", name, namespace, resource)
+	key := fmt.Sprintf("%s.%s.%s", name, namespace, resource)
 
 	// Early returns for deletion or non-processable resources
 	if !c.handler.ShouldProcess(obj, cfg) || eventType == watch.Deleted {
@@ -145,8 +172,8 @@ func (c *Controller) handleEvent(ctx context.Context, cfg *config.Config, obj me
 	}
 
 	// Update state
-	if changed := c.stateManager.AddOrUpdate(key, endpoint); changed {
-		slog.Info("updated endpoint in state", "resource", resource, "name", name, "namespace", namespace)
+	if changed := c.stateManager.AddOrUpdate(key, endpoint, skipWrite); changed {
+		slog.Info("updated endpoint in state", "resource", resource, "name", name, "namespace", namespace, "skipWrite", skipWrite)
 	}
 }
 
