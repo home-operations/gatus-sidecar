@@ -28,7 +28,7 @@ func NewManager(outputFile string) *Manager {
 }
 
 // AddOrUpdate adds or updates an endpoint and writes state if changed
-func (m *Manager) AddOrUpdate(key string, endpoint *endpoint.Endpoint, skipWrite bool) bool {
+func (m *Manager) AddOrUpdate(key string, endpoint *endpoint.Endpoint, write bool) bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -40,12 +40,11 @@ func (m *Manager) AddOrUpdate(key string, endpoint *endpoint.Endpoint, skipWrite
 
 	m.endpoints[key] = endpoint
 
-	// Write state unless skipped
-	if skipWrite {
-		return true // Change detected
+	// Write state if requested
+	if write {
+		m.writeState()
 	}
 
-	m.writeState()
 	return true // Change detected
 }
 
@@ -62,6 +61,13 @@ func (m *Manager) Remove(key string) bool {
 	delete(m.endpoints, key)
 	m.writeState()
 	return true // Change detected
+}
+
+// ForceWrite forces a write of the current state to disk
+func (m *Manager) ForceWrite() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.writeState()
 }
 
 // writeState writes the current state to disk (must be called with mutex held)

@@ -71,16 +71,22 @@ func (c *Controller) initialList(ctx context.Context, cfg *config.Config) error 
 		return fmt.Errorf("list %s: %w", c.gvr.Resource, err)
 	}
 
-	for i, item := range list.Items {
+	changed := false
+
+	for _, item := range list.Items {
 		obj, err := c.convert(&item)
 		if err != nil {
 			slog.Error("failed to convert resource", "resource", c.gvr.Resource, "error", err)
 			continue
 		}
 
-		// Skip write for all but last to reduce I/O
-		isNotLast := i != len(list.Items)-1
-		c.handleEvent(ctx, cfg, obj, watch.Added, isNotLast)
+		if c.handleEvent(ctx, cfg, obj, watch.Added, false) {
+			changed = true
+		}
+	}
+
+	if changed {
+		c.stateManager.ForceWrite()
 	}
 
 	return nil
@@ -113,7 +119,7 @@ func (c *Controller) processEvent(ctx context.Context, cfg *config.Config, evt w
 		return
 	}
 
-	c.handleEvent(ctx, cfg, obj, evt.Type, false)
+	c.handleEvent(ctx, cfg, obj, evt.Type, true)
 }
 
 func (c *Controller) convertEvent(evt watch.Event) (metav1.Object, error) {
@@ -125,7 +131,7 @@ func (c *Controller) convertEvent(evt watch.Event) (metav1.Object, error) {
 	return c.convert(unstructuredObj)
 }
 
-func (c *Controller) handleEvent(ctx context.Context, cfg *config.Config, obj metav1.Object, eventType watch.EventType, skipWrite bool) {
+func (c *Controller) handleEvent(ctx context.Context, cfg *config.Config, obj metav1.Object, eventType watch.EventType, write bool) bool {
 	name := obj.GetName()
 	namespace := obj.GetNamespace()
 	annotations := obj.GetAnnotations()
@@ -135,27 +141,27 @@ func (c *Controller) handleEvent(ctx context.Context, cfg *config.Config, obj me
 	// Early returns for deletion or non-processable resources
 	if !c.handler.ShouldProcess(obj, cfg) || eventType == watch.Deleted {
 		c.removeFromState(key, resource, name, namespace)
-		return
+		return true // Change detected
 	}
 
 	// Validate URL availability
 	url := c.handler.ExtractURL(obj)
 	if url == "" {
 		slog.Warn("resource has no url", "resource", resource, "name", name, "namespace", namespace)
-		return
+		return false
 	}
 
 	// Check if endpoint is explicitly disabled
 	if c.isEndpointDisabled(annotations, cfg) {
 		c.removeFromState(key, resource, name, namespace)
-		return
+		return true // Change detected
 	}
 
 	// Process template data
 	templateData, err := c.buildTemplateData(ctx, obj, cfg)
 	if err != nil {
 		slog.Error("failed to build template data", "resource", resource, "name", name, "namespace", namespace, "error", err)
-		return
+		return false
 	}
 
 	// Create and configure endpoint
@@ -172,9 +178,12 @@ func (c *Controller) handleEvent(ctx context.Context, cfg *config.Config, obj me
 	}
 
 	// Update state
-	if changed := c.stateManager.AddOrUpdate(key, endpoint, skipWrite); changed {
-		slog.Info("updated endpoint in state", "resource", resource, "name", name, "namespace", namespace, "skipWrite", skipWrite)
+	changed := c.stateManager.AddOrUpdate(key, endpoint, write)
+	if changed {
+		slog.Info("updated endpoint in state", "resource", resource, "name", name, "namespace", namespace, "write", write)
 	}
+
+	return changed // Change detected
 }
 
 func (c *Controller) isEndpointDisabled(annotations map[string]string, cfg *config.Config) bool {
