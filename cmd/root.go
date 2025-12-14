@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -76,20 +77,24 @@ func main() {
 }
 
 func getKubeConfig() (*rest.Config, error) {
-	// Try in-cluster config first
-	if cfg, err := rest.InClusterConfig(); err == nil {
+	// Check if we're running in a cluster by looking for the service host env var
+	if os.Getenv("KUBERNETES_SERVICE_HOST") != "" {
+		cfg, err := rest.InClusterConfig()
+		if err != nil {
+			return nil, fmt.Errorf("in-cluster config: %w", err)
+		}
 		slog.Info("using in-cluster kubernetes config")
 		return cfg, nil
 	}
 
-	// Fall back to kubeconfig
+	// Fall back to kubeconfig for local development
 	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
 	configOverrides := &clientcmd.ConfigOverrides{}
 	kubeConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, configOverrides)
 
 	cfg, err := kubeConfig.ClientConfig()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("kubeconfig: %w", err)
 	}
 
 	slog.Info("using kubeconfig")
