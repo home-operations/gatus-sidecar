@@ -16,6 +16,7 @@ import (
 	"github.com/home-operations/gatus-sidecar/internal/state"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 func main() {
@@ -23,9 +24,9 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	restCfg, err := rest.InClusterConfig()
+	restCfg, err := getKubeConfig()
 	if err != nil {
-		slog.Error("get in-cluster config", "error", err)
+		slog.Error("get kubernetes config", "error", err)
 		os.Exit(1)
 	}
 
@@ -68,6 +69,27 @@ func main() {
 	}
 
 	slog.Info("All controllers have finished successfully")
+}
+
+func getKubeConfig() (*rest.Config, error) {
+	// Try in-cluster config first
+	if cfg, err := rest.InClusterConfig(); err == nil {
+		slog.Info("using in-cluster kubernetes config")
+		return cfg, nil
+	}
+
+	// Fall back to kubeconfig
+	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
+	configOverrides := &clientcmd.ConfigOverrides{}
+	kubeConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, configOverrides)
+
+	cfg, err := kubeConfig.ClientConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	slog.Info("using kubeconfig")
+	return cfg, nil
 }
 
 func runControllers(ctx context.Context, cfg *config.Config, controllers []*controller.Controller) error {
