@@ -12,6 +12,7 @@ import (
 	"github.com/home-operations/gatus-sidecar/internal/controller"
 	"github.com/home-operations/gatus-sidecar/internal/resources/httproute"
 	"github.com/home-operations/gatus-sidecar/internal/resources/ingress"
+	"github.com/home-operations/gatus-sidecar/internal/resources/ingressroute"
 	"github.com/home-operations/gatus-sidecar/internal/resources/service"
 	"github.com/home-operations/gatus-sidecar/internal/state"
 	"k8s.io/client-go/dynamic"
@@ -43,7 +44,7 @@ func main() {
 	controllers := []*controller.Controller{}
 
 	// Determine if default controllers should be enabled
-	defaultControllers := !cfg.EnableHTTPRoute && !cfg.EnableIngress && !cfg.EnableService
+	defaultControllers := !cfg.EnableHTTPRoute && !cfg.EnableIngress && !cfg.EnableService && !cfg.EnableIngressRoute
 
 	// Conditionally register controllers based on config
 	if cfg.EnableHTTPRoute || cfg.AutoHTTPRoute || defaultControllers {
@@ -54,6 +55,9 @@ func main() {
 	}
 	if cfg.EnableService || cfg.AutoService || defaultControllers {
 		controllers = append(controllers, controller.New(service.Definition(), stateManager, dc))
+	}
+	if cfg.EnableIngressRoute || cfg.AutoIngressRoute {
+		controllers = append(controllers, controller.New(ingressroute.Definition(), stateManager, dc))
 	}
 
 	// If no controllers are enabled, log a warning and exit
