@@ -176,6 +176,7 @@ spec:
     - api.example.com
   # ... rest of HTTPRoute spec
 ```
+The resulting endpoint will have both Gateway and HTTPRoute configurations merged.
 
 ### 🏗️ Ingress Inheritance
 
