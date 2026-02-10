@@ -13,9 +13,11 @@ type Config struct {
 	EnableHTTPRoute    bool
 	EnableIngress      bool
 	EnableService      bool
+	EnableIngressRoute bool
 	AutoHTTPRoute      bool
 	AutoIngress        bool
 	AutoService        bool
+	AutoIngressRoute   bool
 	Output             string
 	DefaultInterval    time.Duration
 	TemplateAnnotation string
@@ -34,6 +36,8 @@ func Load() *Config {
 	flag.BoolVar(&cfg.AutoHTTPRoute, "auto-httproute", false, "Automatically create endpoints for HTTPRoutes")
 	flag.BoolVar(&cfg.AutoIngress, "auto-ingress", false, "Automatically create endpoints for Ingresses")
 	flag.BoolVar(&cfg.AutoService, "auto-service", false, "Automatically create endpoints for Services")
+	flag.BoolVar(&cfg.EnableIngressRoute, "enable-ingressroute", false, "Enable Traefik IngressRoute endpoint generation")
+	flag.BoolVar(&cfg.AutoIngressRoute, "auto-ingressroute", false, "Automatically create endpoints for Traefik IngressRoutes")
 	flag.StringVar(&cfg.Output, "output", "/config/gatus-sidecar.yaml", "File to write generated YAML")
 	flag.DurationVar(&cfg.DefaultInterval, "default-interval", time.Minute, "Default interval value for endpoints")
 	flag.StringVar(&cfg.TemplateAnnotation, "annotation-config", "gatus.home-operations.com/endpoint", "Annotation key for YAML config override")
