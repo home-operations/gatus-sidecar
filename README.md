@@ -12,7 +12,8 @@ gatus-sidecar is a lightweight Go application designed to run as a sidecar conta
 - **🔍 Automatic Discovery**: Watches for resource changes and dynamically updates monitoring configurations  
 - **🎛️ Flexible Filtering**: Filter resources by namespace, gateway name, or ingress class
 - **📋 Template Support**: Override default configurations using Kubernetes annotations
-- **🏗️ Gateway Inheritance**: HTTPRoutes automatically inherit annotations from their parent Gateway
+- **🏗️ Gateway Inheritance**: HTTPRoutes automatically inherit annotations from their parent gateway
+- **🏗️ Ingress Inheritance**: Ingress automatically inherit annotations from their parent ingress class
 - **👥 Auto-Grouping**: Automatically group endpoints by namespace (Services) or gateway/ingress class (HTTPRoutes/Ingresses)
 - **⚡ Zero Downtime**: Hot-reload configurations without restarting Gatus
 - **🪶 Lightweight**: Minimal resource footprint with efficient Kubernetes API watching
@@ -63,7 +64,7 @@ gatus-sidecar [options]
 Monitor Gateway API HTTPRoute resources:
 
 ```bash
-gatus-sidecar --auto-routes --gateway-name=my-gateway
+gatus-sidecar --auto-httproute --gateway-name=my-gateway
 ```
 
 ### 🔀 Ingress Mode
@@ -71,7 +72,7 @@ gatus-sidecar --auto-routes --gateway-name=my-gateway
 Monitor Kubernetes Ingress resources:
 
 ```bash
-gatus-sidecar --auto-ingresses --ingress-class=nginx
+gatus-sidecar --auto-ingress --ingress-class=nginx
 ```
 
 ### 🔧 Service Mode
@@ -79,7 +80,7 @@ gatus-sidecar --auto-ingresses --ingress-class=nginx
 Monitor Kubernetes Service resources:
 
 ```bash
-gatus-sidecar --auto-services --namespace=production
+gatus-sidecar --auto-service --namespace=production
 ```
 
 ### 📊 Multi-Resource Mode
@@ -87,7 +88,7 @@ gatus-sidecar --auto-services --namespace=production
 Monitor all resource types simultaneously:
 
 ```bash
-gatus-sidecar --auto-routes --auto-ingresses --auto-services --auto-group
+gatus-sidecar --auto-httproute --auto-ingress --auto-service
 ```
 
 ## ⚙️ Configuration
@@ -116,27 +117,11 @@ endpoints:
       - "[CONNECTED] == true"
 ```
 
-### 📊 Auto-Grouping Feature
-
-When `--auto-group` is enabled, endpoints are automatically grouped:
-
-- **Services**: Grouped by namespace
-- **HTTPRoutes**: Grouped by Gateway name
-- **Ingresses**: Grouped by Ingress class
-
-```yaml
-endpoints:
-  - name: "api-route"
-    group: "production-gateway"
-    url: "https://api.example.com"
-    # ... rest of config
-```
-
 ### 🏷️ Resource Selection Modes
 
 The sidecar can operate in different modes based on your needs:
 
-1. **Automatic Mode**: Use `--auto-routes`, `--auto-ingresses`, or `--auto-services` to automatically process all resources of that type
+1. **Automatic Mode**: Use `--auto-httproute`, `--auto-ingress`, or `--auto-service` to automatically process all resources of that type
 2. **Annotation-Based**: Without the auto flags, only resources with specific annotations are processed
 3. **Hybrid Mode**: Combine both approaches for fine-grained control
 
@@ -191,8 +176,42 @@ spec:
     - api.example.com
   # ... rest of HTTPRoute spec
 ```
-
 The resulting endpoint will have both Gateway and HTTPRoute configurations merged.
+
+### 🏗️ Ingress Inheritance
+
+Ingresses automatically inherit annotations from their parent IngressClass. This allows you to set common monitoring configurations at the IngressClass level:
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+  name: internal
+  annotations:
+    gatus.home-operations.com/endpoint: |
+      interval: 30s
+      alerts:
+        - type: slack
+          webhook-url: "https://hooks.slack.com/..."
+spec:
+  # ... IngressClass spec
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingressapp
+  annotations:
+    gatus.home-operations.com/endpoint: |
+      conditions:
+        - "[STATUS] == 200"
+        - "[RESPONSE_TIME] < 500"
+spec:
+  ingressClassName: internal
+  rules:
+  # ... rest of Ingress spec
+```
+
+The resulting endpoint will have both IngressClass and Ingress configurations merged.
 
 ### � Custom Configuration via Annotations
 
@@ -289,9 +308,9 @@ spec:
       - name: gatus-sidecar
         image: ghcr.io/home-operations/gatus-sidecar:latest
         args:
-        - --auto-routes
-        - --auto-ingresses
-        - --auto-services
+        - --auto-httproute
+        - --auto-ingress
+        - --auto-service
         - --auto-group
         - --gateway-name=production-gateway
         - --output=/config/gatus-sidecar.yaml
@@ -316,7 +335,7 @@ rules:
   resources: ["services"]
   verbs: ["get", "list", "watch"]
 - apiGroups: ["networking.k8s.io"]
-  resources: ["ingresses"]
+  resources: ["ingresses", "ingressclasses"]
   verbs: ["get", "list", "watch"]
 - apiGroups: ["gateway.networking.k8s.io"]
   resources: ["httproutes", "gateways"]
@@ -368,8 +387,8 @@ spec:
         image: ghcr.io/home-operations/gatus-sidecar:latest
         args:
         - --namespace=production
-        - --auto-routes
-        - --auto-services
+        - --auto-httproute
+        - --auto-service
         - --output=/config/gatus-sidecar.yaml
         volumeMounts:
         - name: gatus-config
@@ -413,7 +432,7 @@ To run the sidecar locally against a Kubernetes cluster:
 go build -o gatus-sidecar cmd/root.go
 
 # Run with auto-discovery enabled (requires KUBECONFIG)
-./gatus-sidecar --auto-routes --auto-services --output=./gatus-config.yaml
+./gatus-sidecar --auto-httproute --auto-service --output=./gatus-config.yaml
 
 # Or run with selective monitoring
 ./gatus-sidecar --namespace=default --gateway-name=my-gateway
