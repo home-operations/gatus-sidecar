@@ -165,20 +165,20 @@ func (c *Controller) handleEvent(ctx context.Context, cfg *config.Config, obj me
 	}
 
 	// Create and configure endpoint
-	endpoint := &endpoint.Endpoint{
+	e := &endpoint.Endpoint{
 		Name:     name,
 		URL:      url,
 		Interval: cfg.DefaultInterval.String(),
 		Guarded:  c.isGuardedEndpoint(templateData),
 	}
 
-	c.handler.ApplyTemplate(cfg, obj, endpoint)
+	c.handler.ApplyTemplate(cfg, obj, e)
 	if templateData != nil {
-		endpoint.ApplyTemplate(templateData)
+		e.ApplyTemplate(templateData)
 	}
 
 	// Update state
-	changed := c.stateManager.AddOrUpdate(key, endpoint, write)
+	changed := c.stateManager.AddOrUpdate(key, e, write)
 	if changed {
 		slog.Info("updated endpoint in state", "resource", resource, "name", name, "namespace", namespace, "write", write)
 	}

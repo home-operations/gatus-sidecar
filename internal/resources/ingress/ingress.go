@@ -76,23 +76,23 @@ func urlExtractor(obj metav1.Object) string {
 	return hostname
 }
 
-func conditionFunc(cfg *config.Config, obj metav1.Object, endpoint *endpoint.Endpoint) {
-	endpoint.Conditions = []string{"[STATUS] == 200"}
+func conditionFunc(cfg *config.Config, obj metav1.Object, e *endpoint.Endpoint) {
+	e.Conditions = []string{"[STATUS] == 200"}
 }
 
-func guardedFunc(obj metav1.Object, endpoint *endpoint.Endpoint) {
+func guardedFunc(obj metav1.Object, e *endpoint.Endpoint) {
 	if ingress, ok := obj.(*networkingv1.Ingress); ok {
-		applyGuardedTemplate(getFirstHostname(ingress), endpoint)
+		applyGuardedTemplate(getFirstHostname(ingress), e)
 	}
 }
 
-func applyGuardedTemplate(dnsQueryName string, endpoint *endpoint.Endpoint) {
-	endpoint.URL = dnsTestURL
-	endpoint.DNS = map[string]any{
+func applyGuardedTemplate(dnsQueryName string, e *endpoint.Endpoint) {
+	e.URL = dnsTestURL
+	e.DNS = map[string]any{
 		"query-name": dnsQueryName,
 		"query-type": dnsQueryType,
 	}
-	endpoint.Conditions = []string{dnsEmptyBodyCondition}
+	e.Conditions = []string{dnsEmptyBodyCondition}
 }
 
 // Helper functions
