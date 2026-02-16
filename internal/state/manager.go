@@ -28,17 +28,17 @@ func NewManager(outputFile string) *Manager {
 }
 
 // AddOrUpdate adds or updates an endpoint and writes state if changed
-func (m *Manager) AddOrUpdate(key string, endpoint *endpoint.Endpoint, write bool) bool {
+func (m *Manager) AddOrUpdate(key string, e *endpoint.Endpoint, write bool) bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	// Check if this is actually a change
 	existing, exists := m.endpoints[key]
-	if exists && reflect.DeepEqual(existing, endpoint) {
+	if exists && reflect.DeepEqual(existing, e) {
 		return false // No change
 	}
 
-	m.endpoints[key] = endpoint
+	m.endpoints[key] = e
 
 	// Write state if requested
 	if write {
@@ -94,8 +94,8 @@ func (m *Manager) writeState() {
 func (m *Manager) getCurrentState() map[string]any {
 	// Convert to slice and sort for consistent output
 	endpoints := make([]*endpoint.Endpoint, 0, len(m.endpoints))
-	for _, endpoint := range m.endpoints {
-		endpoints = append(endpoints, endpoint)
+	for _, e := range m.endpoints {
+		endpoints = append(endpoints, e)
 	}
 
 	// Sort by name for consistent ordering

@@ -16,7 +16,7 @@ type ResourceHandler interface {
 	// ExtractURL extracts the URL from the resource
 	ExtractURL(obj metav1.Object) string
 	// ApplyTemplate applies the resource-specific template to the endpoint
-	ApplyTemplate(cfg *config.Config, obj metav1.Object, endpoint *endpoint.Endpoint)
+	ApplyTemplate(cfg *config.Config, obj metav1.Object, e *endpoint.Endpoint)
 	// GetParentAnnotations retrieves annotations from the parent resource, if applicable
 	GetParentAnnotations(ctx context.Context, obj metav1.Object) map[string]string
 }
@@ -61,16 +61,16 @@ func (h *Handler) ExtractURL(obj metav1.Object) string {
 	return h.definition.URLExtractor(obj)
 }
 
-func (h *Handler) ApplyTemplate(cfg *config.Config, obj metav1.Object, endpoint *endpoint.Endpoint) {
+func (h *Handler) ApplyTemplate(cfg *config.Config, obj metav1.Object, e *endpoint.Endpoint) {
 	// Apply guarded template if needed
-	if endpoint.Guarded && h.definition.GuardedFunc != nil {
-		h.definition.GuardedFunc(obj, endpoint)
+	if e.Guarded && h.definition.GuardedFunc != nil {
+		h.definition.GuardedFunc(obj, e)
 		return
 	}
 
 	// Apply normal conditions
 	if h.definition.ConditionFunc != nil {
-		h.definition.ConditionFunc(cfg, obj, endpoint)
+		h.definition.ConditionFunc(cfg, obj, e)
 	}
 }
 

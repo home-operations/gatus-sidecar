@@ -46,6 +46,6 @@ func urlExtractor(obj metav1.Object) string {
 		port)
 }
 
-func conditionFunc(cfg *config.Config, obj metav1.Object, endpoint *endpoint.Endpoint) {
-	endpoint.Conditions = []string{"[CONNECTED] == true"}
+func conditionFunc(cfg *config.Config, obj metav1.Object, e *endpoint.Endpoint) {
+	e.Conditions = []string{"[CONNECTED] == true"}
 }
