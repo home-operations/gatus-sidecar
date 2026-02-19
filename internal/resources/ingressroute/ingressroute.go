@@ -57,11 +57,11 @@ func urlExtractor(obj metav1.Object) string {
 	return "http://" + hostname
 }
 
-func conditionFunc(cfg *config.Config, obj metav1.Object, endpoint *endpoint.Endpoint) {
-	endpoint.Conditions = []string{"[STATUS] == 200"}
+func conditionFunc(cfg *config.Config, obj metav1.Object, e *endpoint.Endpoint) {
+	e.Conditions = []string{"[STATUS] == 200"}
 }
 
-func guardedFunc(obj metav1.Object, endpoint *endpoint.Endpoint) {
+func guardedFunc(obj metav1.Object, e *endpoint.Endpoint) {
 	u, ok := obj.(*unstructured.Unstructured)
 	if !ok {
 		return
@@ -72,12 +72,12 @@ func guardedFunc(obj metav1.Object, endpoint *endpoint.Endpoint) {
 		return
 	}
 
-	endpoint.URL = dnsTestURL
-	endpoint.DNS = map[string]any{
+	e.URL = dnsTestURL
+	e.DNS = map[string]any{
 		"query-name": hostname,
 		"query-type": dnsQueryType,
 	}
-	endpoint.Conditions = []string{dnsEmptyBodyCondition}
+	e.Conditions = []string{dnsEmptyBodyCondition}
 }
 
 func getFirstHostname(u *unstructured.Unstructured) string {

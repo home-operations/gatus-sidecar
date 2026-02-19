@@ -47,10 +47,10 @@ type AutoConfigFunc func(cfg *config.Config) bool
 type URLExtractor func(obj metav1.Object) string
 
 // ConditionFunc applies appropriate conditions based on resource type
-type ConditionFunc func(cfg *config.Config, obj metav1.Object, endpoint *endpoint.Endpoint)
+type ConditionFunc func(cfg *config.Config, obj metav1.Object, e *endpoint.Endpoint)
 
 // GuardedFunc determines if an endpoint should be guarded and applies guarded template
-type GuardedFunc func(obj metav1.Object, endpoint *endpoint.Endpoint)
+type GuardedFunc func(obj metav1.Object, e *endpoint.Endpoint)
 
 // ParentExtractor gets parent annotations for hierarchical resources
 type ParentExtractor func(ctx context.Context, obj metav1.Object, client dynamic.Interface) map[string]string
