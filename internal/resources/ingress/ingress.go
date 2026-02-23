@@ -69,7 +69,7 @@ func urlExtractor(obj metav1.Object) string {
 
 	protocol := determineProtocol(ingress, hostname)
 
-	if !strings.HasPrefix(hostname, "http") {
+	if !strings.HasPrefix(hostname, "http://") && !strings.HasPrefix(hostname, "https://") {
 		return fmt.Sprintf("%s://%s", protocol, hostname)
 	}
 
