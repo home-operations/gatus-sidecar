@@ -65,7 +65,7 @@ func urlExtractor(obj metav1.Object) string {
 		return ""
 	}
 
-	if !strings.HasPrefix(hostname, "http") {
+	if !strings.HasPrefix(hostname, "http://") && !strings.HasPrefix(hostname, "https://") {
 		return "https://" + hostname
 	}
 

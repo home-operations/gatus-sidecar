@@ -99,6 +99,20 @@ func TestURLExtractor(t *testing.T) {
 			want: "http://already-prefixed.com",
 		},
 		{
+			name: "adds HTTP prefix when hostname starts with 'http' but is not a URL",
+			obj: &networkingv1.Ingress{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "http-debug-ingress",
+				},
+				Spec: networkingv1.IngressSpec{
+					Rules: []networkingv1.IngressRule{
+						{Host: "http-debug.domain.com"},
+					},
+				},
+			},
+			want: "http://http-debug.domain.com",
+		},
+		{
 			name: "returns empty for non-ingress object",
 			obj:  &corev1.Pod{},
 			want: "",

@@ -75,6 +75,20 @@ func TestURLExtractor(t *testing.T) {
 			want: "http://already-prefixed.com",
 		},
 		{
+			name: "adds HTTPS prefix when hostname starts with 'http' but is not a URL",
+			obj: &gatewayv1.HTTPRoute{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "http-debug-route",
+				},
+				Spec: gatewayv1.HTTPRouteSpec{
+					Hostnames: []gatewayv1.Hostname{
+						"http-test.domain.com",
+					},
+				},
+			},
+			want: "https://http-test.domain.com",
+		},
+		{
 			name: "returns empty for non-HTTPRoute object",
 			obj:  &corev1.Pod{},
 			want: "",
