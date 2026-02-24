@@ -86,7 +86,7 @@ func TestURLExtractor(t *testing.T) {
 					},
 				},
 			},
-			want: "http://http-test.domain.com",
+			want: "https://http-test.domain.com",
 		},
 		{
 			name: "returns empty for non-HTTPRoute object",
