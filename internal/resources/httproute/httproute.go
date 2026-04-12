@@ -47,11 +47,47 @@ func filterFunc(obj metav1.Object, cfg *config.Config) bool {
 	}
 
 	// Check gateway filter if configured
+	if cfg.GatewayName != "" && referencesGateway(route, cfg.GatewayName) {
+		return true
+	}
+
+	gatewayNames := parseGatewayNames(cfg.GatewayNames)
+	if len(gatewayNames) > 0 {
+		return referencesAnyGateway(route, gatewayNames)
+	}
+
 	if cfg.GatewayName != "" {
-		return referencesGateway(route, cfg.GatewayName)
+		return false
 	}
 
 	return true
+}
+
+func parseGatewayNames(gatewayNames string) []string {
+	if gatewayNames == "" {
+		return nil
+	}
+
+	parsed := make([]string, 0, len(strings.Split(gatewayNames, ",")))
+	for _, gatewayName := range strings.Split(gatewayNames, ",") {
+		gatewayName = strings.TrimSpace(gatewayName)
+		if gatewayName == "" {
+			continue
+		}
+		parsed = append(parsed, gatewayName)
+	}
+
+	return parsed
+}
+
+func referencesAnyGateway(route *gatewayv1.HTTPRoute, gatewayNames []string) bool {
+	for _, gatewayName := range gatewayNames {
+		if referencesGateway(route, gatewayName) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func urlExtractor(obj metav1.Object) string {
