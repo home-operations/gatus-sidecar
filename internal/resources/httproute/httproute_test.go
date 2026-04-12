@@ -1,6 +1,7 @@
 package httproute
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/home-operations/gatus-sidecar/internal/config"
@@ -154,6 +155,69 @@ func TestFilterFunc(t *testing.T) {
 			want: false,
 		},
 		{
+			name: "filter by gateway names matches",
+			obj: &gatewayv1.HTTPRoute{
+				ObjectMeta: metav1.ObjectMeta{Name: "test"},
+				Spec: gatewayv1.HTTPRouteSpec{
+					CommonRouteSpec: gatewayv1.CommonRouteSpec{
+						ParentRefs: []gatewayv1.ParentReference{
+							{Name: otherGateway},
+						},
+					},
+				},
+			},
+			cfg:  &config.Config{GatewayNames: "my-gateway,other-gateway"},
+			want: true,
+		},
+		{
+			name: "filter by gateway names trims spaces",
+			obj: &gatewayv1.HTTPRoute{
+				ObjectMeta: metav1.ObjectMeta{Name: "test"},
+				Spec: gatewayv1.HTTPRouteSpec{
+					CommonRouteSpec: gatewayv1.CommonRouteSpec{
+						ParentRefs: []gatewayv1.ParentReference{
+							{Name: otherGateway},
+						},
+					},
+				},
+			},
+			cfg:  &config.Config{GatewayNames: "my-gateway, other-gateway"},
+			want: true,
+		},
+		{
+			name: "filter by gateway names does not match",
+			obj: &gatewayv1.HTTPRoute{
+				ObjectMeta: metav1.ObjectMeta{Name: "test"},
+				Spec: gatewayv1.HTTPRouteSpec{
+					CommonRouteSpec: gatewayv1.CommonRouteSpec{
+						ParentRefs: []gatewayv1.ParentReference{
+							{Name: gatewayName},
+						},
+					},
+				},
+			},
+			cfg:  &config.Config{GatewayNames: "other-gateway,another-gateway"},
+			want: false,
+		},
+		{
+			name: "filter by combined gateway flags matches either option",
+			obj: &gatewayv1.HTTPRoute{
+				ObjectMeta: metav1.ObjectMeta{Name: "test"},
+				Spec: gatewayv1.HTTPRouteSpec{
+					CommonRouteSpec: gatewayv1.CommonRouteSpec{
+						ParentRefs: []gatewayv1.ParentReference{
+							{Name: otherGateway},
+						},
+					},
+				},
+			},
+			cfg: &config.Config{
+				GatewayName:  "missing-gateway",
+				GatewayNames: "other-gateway,another-gateway",
+			},
+			want: true,
+		},
+		{
 			name: "no parent refs passes filter when no gateway filter",
 			obj: &gatewayv1.HTTPRoute{
 				ObjectMeta: metav1.ObjectMeta{Name: "test"},
@@ -175,6 +239,34 @@ func TestFilterFunc(t *testing.T) {
 			got := filterFunc(tt.obj, tt.cfg)
 			if got != tt.want {
 				t.Errorf("filterFunc() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestParseGatewayNames(t *testing.T) {
+	tests := []struct {
+		name         string
+		gatewayNames string
+		want         []string
+	}{
+		{
+			name:         "empty string returns nil",
+			gatewayNames: "",
+			want:         nil,
+		},
+		{
+			name:         "comma separated names are trimmed",
+			gatewayNames: "first-gateway, second-gateway , ,third-gateway",
+			want:         []string{"first-gateway", "second-gateway", "third-gateway"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := parseGatewayNames(tt.gatewayNames)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("parseGatewayNames() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -354,6 +446,56 @@ func TestReferencesGateway(t *testing.T) {
 			got := referencesGateway(tt.route, tt.gatewayName)
 			if got != tt.want {
 				t.Errorf("referencesGateway() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestReferencesAnyGateway(t *testing.T) {
+	targetGateway := gatewayv1.ObjectName("target-gateway")
+	otherGateway := gatewayv1.ObjectName("other-gateway")
+
+	tests := []struct {
+		name         string
+		route        *gatewayv1.HTTPRoute
+		gatewayNames []string
+		want         bool
+	}{
+		{
+			name: "references one of multiple gateways",
+			route: &gatewayv1.HTTPRoute{
+				Spec: gatewayv1.HTTPRouteSpec{
+					CommonRouteSpec: gatewayv1.CommonRouteSpec{
+						ParentRefs: []gatewayv1.ParentReference{
+							{Name: targetGateway},
+						},
+					},
+				},
+			},
+			gatewayNames: []string{"missing-gateway", "target-gateway"},
+			want:         true,
+		},
+		{
+			name: "does not reference any gateway",
+			route: &gatewayv1.HTTPRoute{
+				Spec: gatewayv1.HTTPRouteSpec{
+					CommonRouteSpec: gatewayv1.CommonRouteSpec{
+						ParentRefs: []gatewayv1.ParentReference{
+							{Name: otherGateway},
+						},
+					},
+				},
+			},
+			gatewayNames: []string{"missing-gateway", "target-gateway"},
+			want:         false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := referencesAnyGateway(tt.route, tt.gatewayNames)
+			if got != tt.want {
+				t.Errorf("referencesAnyGateway() = %v, want %v", got, tt.want)
 			}
 		})
 	}

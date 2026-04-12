@@ -47,6 +47,7 @@ gatus-sidecar [options]
 |------|---------|-------------|
 | `--namespace` | `""` | Namespace to watch (empty for all namespaces) |
 | `--gateway-name` | `""` | Gateway name to filter HTTPRoutes |
+| `--gateway-names` | `""` | Comma-separated gateway names to filter HTTPRoutes |
 | `--ingress-class` | `""` | Ingress class to filter Ingresses |
 | `--enable-httproute` | `false` | Enable HTTPRoute endpoint creation |
 | `--enable-ingress` | `false` | Enable Ingress endpoint creation |
@@ -65,6 +66,10 @@ Monitor Gateway API HTTPRoute resources:
 
 ```bash
 gatus-sidecar --auto-httproute --gateway-name=my-gateway
+```
+
+```bash
+gatus-sidecar --auto-httproute --gateway-names=my-gateway,my-gateway-2
 ```
 
 ### 🔀 Ingress Mode
