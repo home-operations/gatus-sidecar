@@ -402,7 +402,7 @@ spec:
 
 ### 📋 Prerequisites
 
-- Go 1.25 or later
+- Go 1.26 or later
 - Kubernetes cluster access
 - kubectl configured
 - Access to Gateway API CRDs (if using HTTPRoute monitoring)
