@@ -9,6 +9,7 @@ type Config struct {
 	Mode               string
 	Namespace          string
 	GatewayName        string
+	GatewayNames       string
 	IngressClass       string
 	EnableHTTPRoute    bool
 	EnableIngress      bool
@@ -29,6 +30,7 @@ func Load() *Config {
 
 	flag.StringVar(&cfg.Namespace, "namespace", "", "Namespace to watch (empty for all)")
 	flag.StringVar(&cfg.GatewayName, "gateway-name", "", "Gateway name to filter HTTPRoutes (optional)")
+	flag.StringVar(&cfg.GatewayNames, "gateway-names", "", "Comma-separated gateway names to filter HTTPRoutes (optional)")
 	flag.StringVar(&cfg.IngressClass, "ingress-class", "", "Ingress class to filter Ingresses (optional)")
 	flag.BoolVar(&cfg.EnableHTTPRoute, "enable-httproute", false, "Enable HTTPRoute endpoint generation")
 	flag.BoolVar(&cfg.EnableIngress, "enable-ingress", false, "Enable Ingress endpoint generation")
