@@ -1,20 +1,22 @@
 # OS generated files
 .DS_Store*
-._*
 .Spotlight-V100
 .Trashes
+._*
 ehthumbs.db
 Thumbs.db
 
 # IDE
+.claude
 .idea
+.private
 .vscode
 
 # Others
+.dev/
+.run/
 bin/
 dist/
-.run/
-.dev/
 tmp/
 
 # Preserve files
