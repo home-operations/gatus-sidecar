@@ -16,6 +16,7 @@ import (
 )
 
 const (
+	apiGroup              = "gateway.networking.k8s.io"
 	dnsTestURL            = "1.1.1.1"
 	dnsEmptyBodyCondition = "len([BODY]) == 0"
 	dnsQueryType          = "A"
@@ -25,7 +26,7 @@ const (
 func Definition() *resources.ResourceDefinition {
 	return &resources.ResourceDefinition{
 		GVR: schema.GroupVersionResource{
-			Group:    "gateway.networking.k8s.io",
+			Group:    apiGroup,
 			Version:  "v1",
 			Resource: "httproutes",
 		},
@@ -103,7 +104,7 @@ func parentExtractor(ctx context.Context, obj metav1.Object, client dynamic.Inte
 	}
 
 	gvr := schema.GroupVersionResource{
-		Group:    "gateway.networking.k8s.io",
+		Group:    apiGroup,
 		Version:  "v1",
 		Resource: "gateways",
 	}
