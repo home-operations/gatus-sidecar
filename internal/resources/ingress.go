@@ -6,12 +6,12 @@ import (
 	"strings"
 
 	"github.com/home-operations/gatus-sidecar/internal/config"
+	"github.com/home-operations/gatus-sidecar/internal/k8s"
 
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/dynamic"
 )
 
 const legacyIngressClassAnnotation = "kubernetes.io/ingress.class"
@@ -81,7 +81,7 @@ func (Ingress) GuardHost(obj metav1.Object) string {
 	return firstIngressHostname(ing)
 }
 
-func (Ingress) ParentAnnotations(ctx context.Context, obj metav1.Object, dc dynamic.Interface) map[string]string {
+func (Ingress) ParentAnnotations(ctx context.Context, obj metav1.Object, fetcher k8s.Fetcher) map[string]string {
 	ing, ok := obj.(*networkingv1.Ingress)
 	if !ok {
 		return nil
@@ -90,11 +90,7 @@ func (Ingress) ParentAnnotations(ctx context.Context, obj metav1.Object, dc dyna
 	if className == "" {
 		return nil
 	}
-	parent, err := dc.Resource(ingressClassGVR).Get(ctx, className, metav1.GetOptions{})
-	if err != nil {
-		return nil
-	}
-	return parent.GetAnnotations()
+	return fetcher.GetAnnotations(ctx, ingressClassGVR, "", className)
 }
 
 func firstIngressHostname(ing *networkingv1.Ingress) string {

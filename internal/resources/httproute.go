@@ -6,11 +6,11 @@ import (
 	"strings"
 
 	"github.com/home-operations/gatus-sidecar/internal/config"
+	"github.com/home-operations/gatus-sidecar/internal/k8s"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/dynamic"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
@@ -77,7 +77,7 @@ func (HTTPRoute) GuardHost(obj metav1.Object) string {
 	return firstHTTPRouteHostname(route)
 }
 
-func (HTTPRoute) ParentAnnotations(ctx context.Context, obj metav1.Object, dc dynamic.Interface) map[string]string {
+func (HTTPRoute) ParentAnnotations(ctx context.Context, obj metav1.Object, fetcher k8s.Fetcher) map[string]string {
 	route, ok := obj.(*gatewayv1.HTTPRoute)
 	if !ok || len(route.Spec.ParentRefs) == 0 {
 		return nil
@@ -97,11 +97,7 @@ func (HTTPRoute) ParentAnnotations(ctx context.Context, obj metav1.Object, dc dy
 		namespace = string(*parent.Namespace)
 	}
 
-	gw, err := dc.Resource(gvr).Namespace(namespace).Get(ctx, string(parent.Name), metav1.GetOptions{})
-	if err != nil {
-		return nil
-	}
-	return gw.GetAnnotations()
+	return fetcher.GetAnnotations(ctx, gvr, namespace, string(parent.Name))
 }
 
 func firstHTTPRouteHostname(route *gatewayv1.HTTPRoute) string {

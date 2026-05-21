@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/home-operations/gatus-sidecar/internal/config"
+	"github.com/home-operations/gatus-sidecar/internal/k8s"
 
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -221,7 +222,7 @@ func TestIngress_ParentAnnotations(t *testing.T) {
 	}
 
 	ing := makeIngress("x", false, &className, nil)
-	ann := (Ingress{}).ParentAnnotations(context.Background(), ing, client)
+	ann := (Ingress{}).ParentAnnotations(context.Background(), ing, k8s.NewFetcher(client))
 	if ann["parent"] != "annotation" {
 		t.Errorf("ParentAnnotations = %v, want {parent: annotation}", ann)
 	}
@@ -232,7 +233,7 @@ func TestIngress_ParentAnnotations_Missing(t *testing.T) {
 	client := fake.NewSimpleDynamicClient(scheme)
 	ing := makeIngress("x", false, nil, nil)
 
-	if ann := (Ingress{}).ParentAnnotations(context.Background(), ing, client); ann != nil {
+	if ann := (Ingress{}).ParentAnnotations(context.Background(), ing, k8s.NewFetcher(client)); ann != nil {
 		t.Errorf("ParentAnnotations(no class) = %v, want nil", ann)
 	}
 }

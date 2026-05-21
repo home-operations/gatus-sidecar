@@ -10,7 +10,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/dynamic"
 )
 
 // Resource declares how to derive a Gatus endpoint from a Kubernetes object.
@@ -40,5 +39,5 @@ type Resource interface {
 
 	// ParentAnnotations returns the parent's annotations for template
 	// inheritance (Gateway → HTTPRoute, IngressClass → Ingress) or nil.
-	ParentAnnotations(ctx context.Context, obj metav1.Object, dc dynamic.Interface) map[string]string
+	ParentAnnotations(ctx context.Context, obj metav1.Object, fetcher Fetcher) map[string]string
 }

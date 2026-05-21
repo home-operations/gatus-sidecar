@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"sync"
 	"time"
 
@@ -31,7 +32,7 @@ type Controller struct {
 	cfg      *config.Config
 	resource Resource
 	writer   *gatus.Writer
-	client   dynamic.Interface
+	fetcher  Fetcher
 	informer cache.SharedIndexInformer
 	queue    workqueue.TypedRateLimitingInterface[string]
 }
@@ -50,7 +51,7 @@ func NewController(cfg *config.Config, r Resource, w *gatus.Writer, client dynam
 		cfg:      cfg,
 		resource: r,
 		writer:   w,
-		client:   client,
+		fetcher:  NewFetcher(client),
 		informer: informer,
 		queue:    queue,
 	}
@@ -227,7 +228,7 @@ func (c *Controller) reconcile(ctx context.Context, key string, flush bool) erro
 }
 
 func (c *Controller) buildTemplate(ctx context.Context, obj metav1.Object) (map[string]any, error) {
-	parentAnnotations := c.resource.ParentAnnotations(ctx, obj, c.client)
+	parentAnnotations := c.resource.ParentAnnotations(ctx, obj, c.fetcher)
 	parentTpl, err := gatus.ParseTemplate(parentAnnotations[c.cfg.TemplateAnnotation])
 	if err != nil {
 		return nil, fmt.Errorf("parent template: %w", err)
@@ -251,14 +252,21 @@ func (c *Controller) removeEndpoint(key, namespace, name, reason string, flush b
 	return nil
 }
 
-// makeEndpointKey returns a writer key unique across resource kinds.
+// makeEndpointKey returns a writer key unique across resource kinds. The
+// "/" separator can't appear in any of the three components (names and
+// namespaces follow DNS rules; resource is a plural identifier).
 func makeEndpointKey(name, namespace string, gvr schema.GroupVersionResource) string {
-	return fmt.Sprintf("%s.%s.%s", name, namespace, gvr.Resource)
+	return gvr.Resource + "/" + namespace + "/" + name
 }
 
 // isExplicitlyDisabled returns true only when the annotation is present *and*
-// falsy. Absence is not "disabled".
+// falsy. Absence is not "disabled". Unparseable values (e.g. empty, "yes")
+// are treated as disabled so a typo can't silently widen monitoring.
 func isExplicitlyDisabled(annotations map[string]string, key string) bool {
 	v, ok := annotations[key]
-	return ok && v != "true" && v != "1"
+	if !ok {
+		return false
+	}
+	enabled, err := strconv.ParseBool(v)
+	return err != nil || !enabled
 }
