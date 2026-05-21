@@ -53,6 +53,13 @@
   documented annotation behavior, URL-derivation rules, and the new prefix /
   multi-value-filter / log-level flags.
 
+## [0.0.17](https://github.com/home-operations/gatus-sidecar/compare/0.0.16...0.0.17) (2026-05-21)
+
+
+### Features
+
+* per-resource path: directive and --probe-paths flag ([#65](https://github.com/home-operations/gatus-sidecar/issues/65)) ([02f2e31](https://github.com/home-operations/gatus-sidecar/commit/02f2e3106b93fd1d5a3879cbde39d23d8ffa1676))
+
 ## [0.0.16](https://github.com/home-operations/gatus-sidecar/compare/0.0.15...0.0.16) (2026-05-21)
 
 
