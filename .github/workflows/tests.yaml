@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
 name: Tests
 on:
   push:
@@ -14,8 +15,8 @@ permissions:
   contents: read
 jobs:
   test:
-    name: Run on Ubuntu
-    runs-on: ubuntu-24.04-arm
+    name: Tests
+    runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
@@ -23,7 +24,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
-      - name: Install Mise and required tools
+      - name: Setup Mise
         uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
         with:
           experimental: true
