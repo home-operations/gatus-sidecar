@@ -3,7 +3,6 @@ package resources
 import (
 	"context"
 	"slices"
-	"strings"
 
 	"github.com/home-operations/gatus-sidecar/internal/config"
 	"github.com/home-operations/gatus-sidecar/internal/k8s"
@@ -45,10 +44,7 @@ func (HTTPRoute) Matches(obj metav1.Object, cfg *config.Config) bool {
 	if len(cfg.GatewayNames) > 0 && !httpRouteReferencesAnyGateway(route, cfg.GatewayNames) {
 		return false
 	}
-	if cfg.AutoHTTPRoute {
-		return true
-	}
-	return hasGatusAnnotations(obj, cfg)
+	return matchesAnnotation(obj, cfg.AutoHTTPRoute, cfg)
 }
 
 func (HTTPRoute) URL(obj metav1.Object) string {
@@ -60,11 +56,7 @@ func (HTTPRoute) URL(obj metav1.Object) string {
 	if host == "" {
 		return ""
 	}
-	path := firstHTTPRoutePath(route)
-	if strings.HasPrefix(host, "http://") || strings.HasPrefix(host, "https://") {
-		return host + path
-	}
-	return "https://" + host + path
+	return formatURL(host, firstHTTPRoutePath(route), true)
 }
 
 func (HTTPRoute) DefaultConditions() []string { return httpDefaultConditions }

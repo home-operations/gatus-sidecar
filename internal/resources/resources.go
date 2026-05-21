@@ -5,6 +5,7 @@ package resources
 import (
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/home-operations/gatus-sidecar/internal/config"
 	"github.com/home-operations/gatus-sidecar/internal/k8s"
@@ -23,6 +24,26 @@ var (
 	httpDefaultConditions = []string{conditionHTTPOK}
 	tcpDefaultConditions  = []string{conditionConnected}
 )
+
+// formatURL composes scheme://host/path, honoring an embedded scheme on host
+// (e.g. host = "http://example.com" yields host+path unchanged).
+func formatURL(host, path string, useTLS bool) string {
+	if strings.HasPrefix(host, "http://") || strings.HasPrefix(host, "https://") {
+		return host + path
+	}
+	scheme := "http"
+	if useTLS {
+		scheme = "https"
+	}
+	return scheme + "://" + host + path
+}
+
+// matchesAnnotation accepts obj when auto-mode is on or when an explicit
+// gatus annotation opts the resource in. Callers run any kind-specific
+// filter (ingress class, gateway name) before this.
+func matchesAnnotation(obj metav1.Object, auto bool, cfg *config.Config) bool {
+	return auto || hasGatusAnnotations(obj, cfg)
+}
 
 // All returns the Resource implementations enabled by cfg. With no flag set,
 // all four kinds run in annotation-only mode.

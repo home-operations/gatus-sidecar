@@ -205,9 +205,8 @@ func (c *Controller) reconcile(ctx context.Context, key string, flush bool) erro
 		Name:     c.resource.Prefix(c.cfg) + name,
 		URL:      url,
 		Interval: c.cfg.DefaultInterval.String(),
-		Guarded:  gatus.IsGuarded(merged),
 	}
-	if e.Guarded {
+	if gatus.IsGuarded(merged) {
 		if host := c.resource.GuardHost(obj); host != "" {
 			gatus.ApplyGuardedDNS(host, e)
 		}

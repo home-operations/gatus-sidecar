@@ -35,10 +35,7 @@ func (Service) Matches(obj metav1.Object, cfg *config.Config) bool {
 	if _, ok := obj.(*corev1.Service); !ok {
 		return false
 	}
-	if cfg.AutoService {
-		return true
-	}
-	return hasGatusAnnotations(obj, cfg)
+	return matchesAnnotation(obj, cfg.AutoService, cfg)
 }
 
 func (Service) URL(obj metav1.Object) string {

@@ -38,10 +38,7 @@ func (IngressRoute) Matches(obj metav1.Object, cfg *config.Config) bool {
 	if _, ok := obj.(*unstructured.Unstructured); !ok {
 		return false
 	}
-	if cfg.AutoIngressRoute {
-		return true
-	}
-	return hasGatusAnnotations(obj, cfg)
+	return matchesAnnotation(obj, cfg.AutoIngressRoute, cfg)
 }
 
 func (IngressRoute) URL(obj metav1.Object) string {
@@ -53,10 +50,7 @@ func (IngressRoute) URL(obj metav1.Object) string {
 	if host == "" {
 		return ""
 	}
-	if ingressRouteHasTLS(u) {
-		return "https://" + host + path
-	}
-	return "http://" + host + path
+	return formatURL(host, path, ingressRouteHasTLS(u))
 }
 
 func (IngressRoute) DefaultConditions() []string { return httpDefaultConditions }
