@@ -48,10 +48,10 @@ func TestEndpoint_ApplyTemplate(t *testing.T) {
 			want: &Endpoint{Name: "a", URL: "x", Interval: "1m", DNS: map[string]any{"query-name": "old", "query-type": "AAAA"}},
 		},
 		{
-			name: "guarded bool",
+			name: "guarded is consumed (not serialized, not in Extra)",
 			in:   &Endpoint{Name: "a", URL: "x", Interval: "1m"},
 			tmpl: map[string]any{"guarded": true},
-			want: &Endpoint{Name: "a", URL: "x", Interval: "1m", Guarded: true},
+			want: &Endpoint{Name: "a", URL: "x", Interval: "1m"},
 		},
 		{
 			name: "unknown keys go into Extra",

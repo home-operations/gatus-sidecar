@@ -27,7 +27,7 @@ type fakeResource struct {
 	conditions     []string
 	guardHost      string
 	urlFn          func(metav1.Object) string
-	parentAnnotsFn func(context.Context, metav1.Object, dynamic.Interface) map[string]string
+	parentAnnotsFn func(context.Context, metav1.Object, Fetcher) map[string]string
 }
 
 func (f fakeResource) GVR() schema.GroupVersionResource                          { return f.gvr }
@@ -44,9 +44,9 @@ func (f fakeResource) URL(obj metav1.Object) string {
 	return "https://example.com"
 }
 
-func (f fakeResource) ParentAnnotations(ctx context.Context, obj metav1.Object, dc dynamic.Interface) map[string]string {
+func (f fakeResource) ParentAnnotations(ctx context.Context, obj metav1.Object, fetcher Fetcher) map[string]string {
 	if f.parentAnnotsFn != nil {
-		return f.parentAnnotsFn(ctx, obj, dc)
+		return f.parentAnnotsFn(ctx, obj, fetcher)
 	}
 	return nil
 }
@@ -192,9 +192,13 @@ func TestIsExplicitlyDisabled(t *testing.T) {
 	}{
 		{"absent", nil, false},
 		{"true", map[string]string{"enabled": "true"}, false},
+		{"True", map[string]string{"enabled": "True"}, false},
+		{"TRUE", map[string]string{"enabled": "TRUE"}, false},
 		{"one", map[string]string{"enabled": "1"}, false},
 		{"false", map[string]string{"enabled": "false"}, true},
+		{"zero", map[string]string{"enabled": "0"}, true},
 		{"empty", map[string]string{"enabled": ""}, true},
+		{"unparseable", map[string]string{"enabled": "yes"}, true},
 	}
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
@@ -207,7 +211,7 @@ func TestIsExplicitlyDisabled(t *testing.T) {
 
 func TestMakeEndpointKey(t *testing.T) {
 	got := makeEndpointKey("a", "ns", schema.GroupVersionResource{Resource: "ingresses"})
-	want := "a.ns.ingresses"
+	want := "ingresses/ns/a"
 	if got != want {
 		t.Errorf("makeEndpointKey() = %q, want %q", got, want)
 	}
@@ -272,7 +276,7 @@ func TestController_TemplateInheritanceAndGuarded(t *testing.T) {
 		conditions: []string{"[STATUS] == 200"},
 		guardHost:  "guarded.example.com",
 		urlFn:      func(metav1.Object) string { return "https://thing-a.example.com" },
-		parentAnnotsFn: func(context.Context, metav1.Object, dynamic.Interface) map[string]string {
+		parentAnnotsFn: func(context.Context, metav1.Object, Fetcher) map[string]string {
 			// Parent supplies group; child supplies interval and guarded.
 			return map[string]string{"tpl": "group: parent-group\ninterval: 60s\n"}
 		},

@@ -7,12 +7,12 @@ import (
 	"strings"
 
 	"github.com/home-operations/gatus-sidecar/internal/config"
+	"github.com/home-operations/gatus-sidecar/internal/k8s"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/dynamic"
 )
 
 var serviceGVR = schema.GroupVersionResource{
@@ -35,10 +35,7 @@ func (Service) Matches(obj metav1.Object, cfg *config.Config) bool {
 	if _, ok := obj.(*corev1.Service); !ok {
 		return false
 	}
-	if cfg.AutoService {
-		return true
-	}
-	return hasGatusAnnotations(obj, cfg)
+	return matchesAnnotation(obj, cfg.AutoService, cfg)
 }
 
 func (Service) URL(obj metav1.Object) string {
@@ -56,6 +53,6 @@ func (Service) DefaultConditions() []string { return tcpDefaultConditions }
 // Services have no meaningful guarded mode.
 func (Service) GuardHost(metav1.Object) string { return "" }
 
-func (Service) ParentAnnotations(context.Context, metav1.Object, dynamic.Interface) map[string]string {
+func (Service) ParentAnnotations(context.Context, metav1.Object, k8s.Fetcher) map[string]string {
 	return nil
 }

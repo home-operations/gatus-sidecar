@@ -14,12 +14,12 @@ type Endpoint struct {
 	DNS        map[string]any `yaml:"dns,omitempty"`
 	Client     map[string]any `yaml:"client,omitempty"`
 	UI         map[string]any `yaml:"ui,omitempty"`
-	Guarded    bool           `yaml:"-"`
 	Extra      map[string]any `yaml:",inline,omitempty"`
 }
 
 // ApplyTemplate overlays data onto e. Known keys overwrite typed fields;
-// everything else lands in Extra.
+// everything else lands in Extra. "guarded" is consumed by the controller
+// before this is called (see [IsGuarded]) and is not part of the output.
 func (e *Endpoint) ApplyTemplate(data map[string]any) {
 	for key, value := range data {
 		switch key {
@@ -40,9 +40,7 @@ func (e *Endpoint) ApplyTemplate(data map[string]any) {
 		case "ui":
 			mergeMap(&e.UI, value)
 		case "guarded":
-			if v, ok := value.(bool); ok {
-				e.Guarded = v
-			}
+			// consumed by the controller; never serialized
 		default:
 			e.setExtra(key, value)
 		}

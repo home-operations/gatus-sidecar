@@ -6,12 +6,12 @@ import (
 	"strings"
 
 	"github.com/home-operations/gatus-sidecar/internal/config"
+	"github.com/home-operations/gatus-sidecar/internal/k8s"
 
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/dynamic"
 )
 
 const legacyIngressClassAnnotation = "kubernetes.io/ingress.class"
@@ -47,10 +47,7 @@ func (Ingress) Matches(obj metav1.Object, cfg *config.Config) bool {
 	if len(cfg.IngressClasses) > 0 && !cfg.IngressClasses.Contains(ingressClassOf(ing)) {
 		return false
 	}
-	if cfg.AutoIngress {
-		return true
-	}
-	return hasGatusAnnotations(obj, cfg)
+	return matchesAnnotation(obj, cfg.AutoIngress, cfg)
 }
 
 func (Ingress) URL(obj metav1.Object) string {
@@ -62,13 +59,7 @@ func (Ingress) URL(obj metav1.Object) string {
 	if host == "" {
 		return ""
 	}
-	if strings.HasPrefix(host, "http://") || strings.HasPrefix(host, "https://") {
-		return host + path
-	}
-	if ingressUsesTLS(ing, host) {
-		return "https://" + host + path
-	}
-	return "http://" + host + path
+	return formatURL(host, path, ingressUsesTLS(ing, host))
 }
 
 func (Ingress) DefaultConditions() []string { return httpDefaultConditions }
@@ -78,10 +69,11 @@ func (Ingress) GuardHost(obj metav1.Object) string {
 	if !ok {
 		return ""
 	}
-	return firstIngressHostname(ing)
+	host, _ := firstIngressHostAndPath(ing)
+	return host
 }
 
-func (Ingress) ParentAnnotations(ctx context.Context, obj metav1.Object, dc dynamic.Interface) map[string]string {
+func (Ingress) ParentAnnotations(ctx context.Context, obj metav1.Object, fetcher k8s.Fetcher) map[string]string {
 	ing, ok := obj.(*networkingv1.Ingress)
 	if !ok {
 		return nil
@@ -90,20 +82,7 @@ func (Ingress) ParentAnnotations(ctx context.Context, obj metav1.Object, dc dyna
 	if className == "" {
 		return nil
 	}
-	parent, err := dc.Resource(ingressClassGVR).Get(ctx, className, metav1.GetOptions{})
-	if err != nil {
-		return nil
-	}
-	return parent.GetAnnotations()
-}
-
-func firstIngressHostname(ing *networkingv1.Ingress) string {
-	for _, rule := range ing.Spec.Rules {
-		if rule.Host != "" {
-			return rule.Host
-		}
-	}
-	return ""
+	return fetcher.GetAnnotations(ctx, ingressClassGVR, "", className)
 }
 
 // firstIngressHostAndPath returns the first non-empty hostname and the first

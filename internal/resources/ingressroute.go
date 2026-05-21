@@ -5,11 +5,11 @@ import (
 	"regexp"
 
 	"github.com/home-operations/gatus-sidecar/internal/config"
+	"github.com/home-operations/gatus-sidecar/internal/k8s"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/dynamic"
 )
 
 var (
@@ -38,10 +38,7 @@ func (IngressRoute) Matches(obj metav1.Object, cfg *config.Config) bool {
 	if _, ok := obj.(*unstructured.Unstructured); !ok {
 		return false
 	}
-	if cfg.AutoIngressRoute {
-		return true
-	}
-	return hasGatusAnnotations(obj, cfg)
+	return matchesAnnotation(obj, cfg.AutoIngressRoute, cfg)
 }
 
 func (IngressRoute) URL(obj metav1.Object) string {
@@ -53,10 +50,7 @@ func (IngressRoute) URL(obj metav1.Object) string {
 	if host == "" {
 		return ""
 	}
-	if ingressRouteHasTLS(u) {
-		return "https://" + host + path
-	}
-	return "http://" + host + path
+	return formatURL(host, path, ingressRouteHasTLS(u))
 }
 
 func (IngressRoute) DefaultConditions() []string { return httpDefaultConditions }
@@ -69,7 +63,7 @@ func (IngressRoute) GuardHost(obj metav1.Object) string {
 	return firstIngressRouteHostname(u)
 }
 
-func (IngressRoute) ParentAnnotations(_ context.Context, _ metav1.Object, _ dynamic.Interface) map[string]string {
+func (IngressRoute) ParentAnnotations(context.Context, metav1.Object, k8s.Fetcher) map[string]string {
 	return nil
 }
 

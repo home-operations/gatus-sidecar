@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/home-operations/gatus-sidecar/internal/config"
+	"github.com/home-operations/gatus-sidecar/internal/k8s"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -157,7 +158,7 @@ func TestHTTPRoute_ParentAnnotations(t *testing.T) {
 	}
 
 	route := makeRoute("r", []gatewayv1.Hostname{"x"}, []gatewayv1.ParentReference{{Name: "gw"}}, nil)
-	ann := (HTTPRoute{}).ParentAnnotations(context.Background(), route, client)
+	ann := (HTTPRoute{}).ParentAnnotations(context.Background(), route, k8s.NewFetcher(client))
 	if ann["parent"] != "annotation" {
 		t.Errorf("got %v", ann)
 	}
@@ -167,7 +168,7 @@ func TestHTTPRoute_ParentAnnotations_NoParents(t *testing.T) {
 	scheme := runtime.NewScheme()
 	client := fake.NewSimpleDynamicClient(scheme)
 	route := makeRoute("r", []gatewayv1.Hostname{"x"}, nil, nil)
-	if ann := (HTTPRoute{}).ParentAnnotations(context.Background(), route, client); ann != nil {
+	if ann := (HTTPRoute{}).ParentAnnotations(context.Background(), route, k8s.NewFetcher(client)); ann != nil {
 		t.Errorf("got %v, want nil", ann)
 	}
 }
@@ -177,7 +178,7 @@ func TestHTTPRoute_ParentAnnotations_NonGatewayKind(t *testing.T) {
 	client := fake.NewSimpleDynamicClient(scheme)
 	kind := gatewayv1.Kind("Service")
 	route := makeRoute("r", []gatewayv1.Hostname{"x"}, []gatewayv1.ParentReference{{Name: "svc", Kind: &kind}}, nil)
-	if ann := (HTTPRoute{}).ParentAnnotations(context.Background(), route, client); ann != nil {
+	if ann := (HTTPRoute{}).ParentAnnotations(context.Background(), route, k8s.NewFetcher(client)); ann != nil {
 		t.Errorf("got %v, want nil", ann)
 	}
 }
