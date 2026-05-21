@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gatus
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: gatus
+  namespace: gatus
+spec:
+  restartPolicy: Never
+  containers:
+    - name: gatus
+      image: ghcr.io/twin/gatus:latest
+      imagePullPolicy: IfNotPresent
+      env:
+        - name: GATUS_CONFIG_PATH
+          value: /etc/gatus/config.yaml
+      ports:
+        - name: http
+          containerPort: 8080
+      readinessProbe:
+        httpGet:
+          path: /health
+          port: http
+        periodSeconds: 2
+        failureThreshold: 30
+      volumeMounts:
+        - name: config
+          mountPath: /etc/gatus
+          readOnly: true
+  volumes:
+    - name: config
+      configMap:
+        name: gatus-config
