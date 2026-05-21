@@ -53,6 +53,13 @@
   documented annotation behavior, URL-derivation rules, and the new prefix /
   multi-value-filter / log-level flags.
 
+## [0.0.16](https://github.com/home-operations/gatus-sidecar/compare/0.0.15...0.0.16) (2026-05-21)
+
+
+### Features
+
+* rewrite, path-aware URLs, name prefixes, multi-value filters ([#62](https://github.com/home-operations/gatus-sidecar/issues/62)) ([8373935](https://github.com/home-operations/gatus-sidecar/commit/83739354f9cafeec7c8babcd180983267a4d41da))
+
 ## [0.0.15](https://github.com/home-operations/gatus-sidecar/compare/0.0.14...0.0.15) (2026-05-20)
 
 
