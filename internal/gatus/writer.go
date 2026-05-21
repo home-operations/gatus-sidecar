@@ -20,6 +20,11 @@ type Writer struct {
 
 	mu        sync.Mutex
 	endpoints map[string]*Endpoint
+	// dirty signals that the in-memory state has diverged from the on-disk
+	// file (either via an unflushed change or a failed flush). Cleared only
+	// when flushLocked succeeds, so a transient write failure is retried on
+	// the next flush even when the endpoint itself didn't change.
+	dirty bool
 }
 
 func NewWriter(path string) *Writer {
@@ -30,41 +35,45 @@ func NewWriter(path string) *Writer {
 }
 
 // Upsert stores e under key. The bool reports whether the stored value
-// changed; the file is only rewritten when flush is true and a change
-// occurred.
+// changed. The file is rewritten when flush is true and either this call
+// changed something or a previous flush failed.
 func (w *Writer) Upsert(key string, e *Endpoint, flush bool) (bool, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
-	if existing, ok := w.endpoints[key]; ok && reflect.DeepEqual(existing, e) {
-		return false, nil
+	changed := false
+	if existing, ok := w.endpoints[key]; !ok || !reflect.DeepEqual(existing, e) {
+		w.endpoints[key] = e
+		w.dirty = true
+		changed = true
 	}
-	w.endpoints[key] = e
-	if flush {
+	if flush && w.dirty {
 		if err := w.flushLocked(); err != nil {
-			return true, err
+			return changed, err
 		}
 	}
-	return true, nil
+	return changed, nil
 }
 
 // Delete drops the endpoint stored under key. The bool reports whether a
-// deletion occurred; the file is only rewritten when flush is true and a
-// deletion occurred.
+// deletion occurred. The file is rewritten when flush is true and either
+// this call removed something or a previous flush failed.
 func (w *Writer) Delete(key string, flush bool) (bool, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
-	if _, ok := w.endpoints[key]; !ok {
-		return false, nil
+	removed := false
+	if _, ok := w.endpoints[key]; ok {
+		delete(w.endpoints, key)
+		w.dirty = true
+		removed = true
 	}
-	delete(w.endpoints, key)
-	if flush {
+	if flush && w.dirty {
 		if err := w.flushLocked(); err != nil {
-			return true, err
+			return removed, err
 		}
 	}
-	return true, nil
+	return removed, nil
 }
 
 // Flush forces the current state to disk.
@@ -88,7 +97,11 @@ func (w *Writer) flushLocked() error {
 	if err != nil {
 		return fmt.Errorf("marshal endpoints: %w", err)
 	}
-	return writeAtomic(w.path, data, 0o644)
+	if err := writeAtomic(w.path, data, 0o644); err != nil {
+		return err
+	}
+	w.dirty = false
+	return nil
 }
 
 // writeAtomic writes data via tempfile+rename so a concurrent reader (Gatus)
