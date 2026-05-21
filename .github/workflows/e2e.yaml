@@ -1,5 +1,7 @@
+---
 # yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
 name: E2E
+
 on:
   push:
     branches:
@@ -8,11 +10,14 @@ on:
     branches:
       - main
   workflow_dispatch:
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
 permissions:
   contents: read
+
 jobs:
   e2e:
     name: Kind end-to-end
@@ -25,11 +30,13 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
+
       - name: Setup Mise
         uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
         with:
           cache_key: "mise-e2e-v1-{{file_hash}}"
           install_args: --locked
+
       - name: Create Kind cluster
         uses: helm/kind-action@a1b0e391336a6ee6713a0583f8c6240d70863de3 # v1.12.0
         with:
@@ -37,12 +44,14 @@ jobs:
           cluster_name: gatus-sidecar-e2e
           config: test/e2e/kind-config.yaml
           wait: 60s
+
       - name: Kubernetes info
         run: |
           kubectl version
           kubectl get nodes
+
       - name: Run E2E tests
-        run: |
+        run: |-
           # kind-action exports KUBECONFIG to ~/.kube/config but does not
           # propagate the env var to later steps, so set it explicitly here.
           export KUBECONFIG="${HOME}/.kube/config"

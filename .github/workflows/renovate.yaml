@@ -1,5 +1,7 @@
+---
 # yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
 name: Renovate
+
 on:
   push:
     branches:
@@ -8,7 +10,9 @@ on:
       - .renovaterc.json5
       - .renovate/**.json5
   workflow_dispatch:
+
 permissions: {}
+
 jobs:
   renovate:
     name: Renovate
@@ -23,6 +27,7 @@ jobs:
           owner: ${{ github.repository_owner }}
           repositories: ".github"
           permission-actions: write
+
       - name: Run Renovate
         id: dispatch
         env:
@@ -34,6 +39,7 @@ jobs:
             --ref main \
             --field "autodiscoverFilter=${REPO_NAME}")
           echo "run_id=${RUN_URL##*/}" >> "$GITHUB_OUTPUT"
+
       - name: Await Renovate Completion
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
@@ -43,11 +49,12 @@ jobs:
             --repo "${{ github.repository_owner }}/.github" \
             "${RUN_ID}" \
             --exit-status
+
       - name: Renovate Output
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           RUN_ID: ${{ steps.dispatch.outputs.run_id }}
-        run: |
+        run: |-
           gh run view \
             --repo "${{ github.repository_owner }}/.github" \
             --log "${RUN_ID}"
