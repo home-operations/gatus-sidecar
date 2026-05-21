@@ -187,6 +187,7 @@ are merged into typed fields; unknown keys are inlined verbatim — so
 | `conditions` | Replace the default conditions. Accepts string or list. |
 | `dns`, `client`, `ui` | Deep-merged into the field's map. |
 | `guarded` | If present, switches the endpoint to a DNS probe. |
+| `path` | Replace the auto-extracted path. Empty string forces bare host. |
 | _anything else_ | Inlined into the YAML output as-is. |
 
 For resources with a parent (HTTPRoute → Gateway, Ingress → IngressClass) the
@@ -206,6 +207,12 @@ the child for per-route conditions.
 > Trivial paths (empty, `/`, non-rooted) are dropped so the URL stays bare.
 >
 > If the host already starts with `http://` or `https://` the scheme is preserved verbatim (useful for explicit override).
+
+To opt out of path extraction:
+
+- `path: ""` in the endpoint annotation forces a bare-host probe; `path: /custom` picks a specific path while keeping the auto-detected host.
+- `--probe-paths=false` strips paths cluster-wide; per-resource `path:` still applies.
+- A full `url:` annotation overrides both.
 
 ### Guarded probes
 

@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net/url"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -188,8 +190,8 @@ func (c *Controller) reconcile(ctx context.Context, key string, flush bool) erro
 		return c.removeEndpoint(endpointKey, namespace, name, "not-matched", flush)
 	}
 
-	url := c.resource.URL(obj)
-	if url == "" {
+	probeURL := c.resource.URL(obj)
+	if probeURL == "" {
 		// Per-resync per-resource; common for headless Services.
 		slog.Debug("resource has no derivable URL",
 			"resource", c.Resource(), "namespace", namespace, "name", name)
@@ -201,9 +203,16 @@ func (c *Controller) reconcile(ctx context.Context, key string, flush bool) erro
 		return err
 	}
 
+	// "path:" beats --probe-paths; "url:" beats both (applied via ApplyTemplate).
+	if override, ok := gatus.PathOverride(merged); ok {
+		probeURL = setURLPath(probeURL, override)
+	} else if !c.cfg.ProbePaths {
+		probeURL = setURLPath(probeURL, "")
+	}
+
 	e := &gatus.Endpoint{
 		Name:     c.resource.Prefix(c.cfg) + name,
-		URL:      url,
+		URL:      probeURL,
 		Interval: c.cfg.DefaultInterval.String(),
 	}
 	if gatus.IsGuarded(merged) {
@@ -256,6 +265,20 @@ func (c *Controller) removeEndpoint(key, namespace, name, reason string, flush b
 // namespaces follow DNS rules; resource is a plural identifier).
 func makeEndpointKey(name, namespace string, gvr schema.GroupVersionResource) string {
 	return gvr.Resource + "/" + namespace + "/" + name
+}
+
+// setURLPath replaces rawURL's path with path (empty clears it). rawURL
+// is returned unchanged when it doesn't parse as an absolute URL.
+func setURLPath(rawURL, path string) string {
+	u, err := url.Parse(rawURL)
+	if err != nil || u.Scheme == "" {
+		return rawURL
+	}
+	if path != "" && !strings.HasPrefix(path, "/") {
+		path = "/" + path
+	}
+	u.Path = path
+	return u.String()
 }
 
 // isExplicitlyDisabled returns true only when the annotation is present *and*
