@@ -217,6 +217,31 @@ func TestMakeEndpointKey(t *testing.T) {
 	}
 }
 
+func TestSetURLPath(t *testing.T) {
+	cases := []struct {
+		name    string
+		rawURL  string
+		newPath string
+		want    string
+	}{
+		{"replace path", "https://x.example.com/api", "/healthz", "https://x.example.com/healthz"},
+		{"strip path", "https://x.example.com/api", "", "https://x.example.com"},
+		{"add path when none", "https://x.example.com", "/alive", "https://x.example.com/alive"},
+		{"non-rooted gets leading slash", "https://x.example.com/api", "alive", "https://x.example.com/alive"},
+		{"preserves port", "https://x.example.com:8443/api", "/healthz", "https://x.example.com:8443/healthz"},
+		{"preserves query", "https://x.example.com/api?q=1", "/healthz", "https://x.example.com/healthz?q=1"},
+		{"unparseable returns as-is", "not a url", "/healthz", "not a url"},
+		{"scheme-less returns as-is", "x.example.com/api", "/healthz", "x.example.com/api"},
+	}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := setURLPath(tt.rawURL, tt.newPath); got != tt.want {
+				t.Errorf("setURLPath(%q, %q) = %q, want %q", tt.rawURL, tt.newPath, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestController_AppliesPrefixToEndpointName(t *testing.T) {
 	gvr := schema.GroupVersionResource{Group: "test.io", Version: "v1", Resource: "things"}
 	client := newFakeClient(gvr)
@@ -306,6 +331,62 @@ func TestController_TemplateInheritanceAndGuarded(t *testing.T) {
 		if !strings.Contains(out, want) {
 			t.Errorf("output missing %q\n%s", want, out)
 		}
+	}
+}
+
+func TestController_PathOverrideAndProbePathsFlag(t *testing.T) {
+	cases := []struct {
+		name       string
+		annotation string
+		probePaths bool
+		wantURL    string
+	}{
+		{"default keeps auto path", "", true, "https://thing-a.example.com/api"},
+		{"probe-paths=false strips path", "", false, "https://thing-a.example.com"},
+		{"annotation path overrides auto", "path: /healthz\n", true, "https://thing-a.example.com/healthz"},
+		{"empty annotation path forces bare", `path: ""` + "\n", true, "https://thing-a.example.com"},
+		{"annotation wins over probe-paths=false", "path: /healthz\n", false, "https://thing-a.example.com/healthz"},
+	}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			gvr := schema.GroupVersionResource{Group: "test.io", Version: "v1", Resource: "things"}
+			client := newFakeClient(gvr)
+			ann := map[string]string{}
+			if tt.annotation != "" {
+				ann["tpl"] = tt.annotation
+			}
+			seed(t, client, gvr, makeUnstructured(gvr, ann))
+
+			cfg := &config.Config{
+				DefaultInterval:    30 * time.Second,
+				TemplateAnnotation: "tpl",
+				EnabledAnnotation:  "enabled",
+				ProbePaths:         tt.probePaths,
+			}
+			outPath := filepath.Join(t.TempDir(), "out.yaml")
+			writer := gatus.NewWriter(outPath)
+
+			r := fakeResource{
+				gvr:   gvr,
+				urlFn: func(metav1.Object) string { return "https://thing-a.example.com/api" },
+			}
+			c := NewController(cfg, r, writer, client)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			go func() { _ = c.Run(ctx) }()
+
+			if !waitFor(t, func() bool { return writer.Len() == 1 }) {
+				t.Fatalf("expected 1 endpoint, got %d", writer.Len())
+			}
+			data, err := os.ReadFile(outPath)
+			if err != nil {
+				t.Fatalf("ReadFile: %v", err)
+			}
+			if !strings.Contains(string(data), "url: "+tt.wantURL) {
+				t.Errorf("output missing %q\n%s", "url: "+tt.wantURL, data)
+			}
+		})
 	}
 }
 

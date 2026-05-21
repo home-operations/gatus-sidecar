@@ -87,3 +87,26 @@ func TestIsGuarded(t *testing.T) {
 		t.Error("any value at guarded key should be treated as guarded")
 	}
 }
+
+func TestPathOverride(t *testing.T) {
+	cases := []struct {
+		name   string
+		data   map[string]any
+		want   string
+		wantOK bool
+	}{
+		{"absent", map[string]any{"url": "https://x"}, "", false},
+		{"empty forces bare host", map[string]any{"path": ""}, "", true},
+		{"custom path", map[string]any{"path": "/healthz"}, "/healthz", true},
+		{"non-string ignored", map[string]any{"path": 42}, "", false},
+		{"nil data", nil, "", false},
+	}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			got, ok := PathOverride(tt.data)
+			if got != tt.want || ok != tt.wantOK {
+				t.Errorf("PathOverride() = (%q, %v), want (%q, %v)", got, ok, tt.want, tt.wantOK)
+			}
+		})
+	}
+}

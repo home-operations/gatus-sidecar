@@ -35,6 +35,7 @@ type Config struct {
 
 	Output          string
 	DefaultInterval time.Duration
+	ProbePaths      bool
 
 	TemplateAnnotation string
 	EnabledAnnotation  string
@@ -69,6 +70,7 @@ func Load(name string, args []string, errOut io.Writer) (*Config, error) {
 
 	fs.StringVar(&cfg.Output, "output", DefaultOutputPath, "File to write generated YAML")
 	fs.DurationVar(&cfg.DefaultInterval, "default-interval", DefaultInterval, "Default interval value for endpoints")
+	fs.BoolVar(&cfg.ProbePaths, "probe-paths", true, "Include paths from Ingress/HTTPRoute/IngressRoute match rules in probe URLs; set false to probe bare hostnames")
 	fs.StringVar(&cfg.TemplateAnnotation, "annotation-config", DefaultTemplateAnnotation, "Annotation key for YAML config override")
 	fs.StringVar(&cfg.EnabledAnnotation, "annotation-enabled", DefaultEnabledAnnotation, "Annotation key for enabling/disabling resource processing")
 

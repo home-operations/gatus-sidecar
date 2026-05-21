@@ -52,3 +52,14 @@ func IsGuarded(data map[string]any) bool {
 	_, ok := data["guarded"]
 	return ok
 }
+
+// PathOverride returns the explicit path override and true when the template
+// sets a "path" string. An empty override is meaningful (forces bare host).
+func PathOverride(data map[string]any) (string, bool) {
+	raw, ok := data["path"]
+	if !ok {
+		return "", false
+	}
+	s, ok := raw.(string)
+	return s, ok
+}

@@ -18,8 +18,9 @@ type Endpoint struct {
 }
 
 // ApplyTemplate overlays data onto e. Known keys overwrite typed fields;
-// everything else lands in Extra. "guarded" is consumed by the controller
-// before this is called (see [IsGuarded]) and is not part of the output.
+// everything else lands in Extra. "guarded" and "path" are consumed by the
+// controller before this is called (see [IsGuarded], [PathOverride]) and
+// are not part of the output.
 func (e *Endpoint) ApplyTemplate(data map[string]any) {
 	for key, value := range data {
 		switch key {
@@ -39,7 +40,7 @@ func (e *Endpoint) ApplyTemplate(data map[string]any) {
 			mergeMap(&e.Client, value)
 		case "ui":
 			mergeMap(&e.UI, value)
-		case "guarded":
+		case "guarded", "path":
 			// consumed by the controller; never serialized
 		default:
 			e.setExtra(key, value)
