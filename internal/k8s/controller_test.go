@@ -316,7 +316,6 @@ func TestController_TemplateInheritanceAndGuarded(t *testing.T) {
 		t.Fatalf("expected 1 endpoint, got %d", writer.Len())
 	}
 
-	// Now read the file and verify the merged endpoint.
 	data, err := os.ReadFile(outPath)
 	if err != nil {
 		t.Fatalf("ReadFile: %v", err)

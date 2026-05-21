@@ -51,7 +51,7 @@ func All(cfg *config.Config) []k8s.Resource {
 	if !cfg.AnyExplicitlyEnabled() {
 		return []k8s.Resource{Ingress{}, HTTPRoute{}, Service{}, IngressRoute{}}
 	}
-	var out []k8s.Resource
+	out := make([]k8s.Resource, 0, 4)
 	if cfg.EnableIngress || cfg.AutoIngress {
 		out = append(out, Ingress{})
 	}

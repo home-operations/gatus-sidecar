@@ -40,7 +40,7 @@ type cachedFetcher struct {
 	client dynamic.Interface
 	ttl    time.Duration
 
-	mu    sync.Mutex
+	mu    sync.RWMutex
 	cache map[string]fetcherEntry
 }
 
@@ -48,16 +48,17 @@ func (f *cachedFetcher) GetAnnotations(ctx context.Context, gvr schema.GroupVers
 	key := gvr.String() + "/" + namespace + "/" + name
 	now := time.Now()
 
-	f.mu.Lock()
-	if entry, ok := f.cache[key]; ok && now.Before(entry.expires) {
-		f.mu.Unlock()
+	f.mu.RLock()
+	entry, ok := f.cache[key]
+	f.mu.RUnlock()
+	if ok && now.Before(entry.expires) {
 		return entry.annotations
 	}
-	f.mu.Unlock()
 
-	var iface dynamic.ResourceInterface = f.client.Resource(gvr)
+	res := f.client.Resource(gvr)
+	var iface dynamic.ResourceInterface = res
 	if namespace != "" {
-		iface = f.client.Resource(gvr).Namespace(namespace)
+		iface = res.Namespace(namespace)
 	}
 
 	var ann map[string]string
