@@ -145,10 +145,11 @@ func (c *Controller) processNext(ctx context.Context) bool {
 	defer c.queue.Done(key)
 
 	if err := c.reconcile(ctx, key, true); err != nil {
-		if c.queue.NumRequeues(key) < defaultMaxRetry {
+		retries := c.queue.NumRequeues(key)
+		if retries < defaultMaxRetry {
 			slog.Warn("reconcile failed, requeueing",
 				"resource", c.Resource(), "key", key, "error", err,
-				"retries", c.queue.NumRequeues(key))
+				"retries", retries)
 			c.queue.AddRateLimited(key)
 			return true
 		}

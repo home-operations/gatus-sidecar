@@ -44,7 +44,7 @@ func (Service) URL(obj metav1.Object) string {
 		return ""
 	}
 	port := svc.Spec.Ports[0]
-	protocol := cmp.Or(strings.ToLower(string(port.Protocol)), "tcp")
+	protocol := strings.ToLower(string(cmp.Or(port.Protocol, corev1.ProtocolTCP)))
 	return fmt.Sprintf("%s://%s.%s.svc:%d", protocol, svc.Name, svc.Namespace, port.Port)
 }
 

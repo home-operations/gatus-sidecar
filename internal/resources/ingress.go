@@ -87,21 +87,19 @@ func (Ingress) ParentAnnotations(ctx context.Context, obj metav1.Object, fetcher
 
 // firstIngressHostAndPath returns the first non-empty hostname and the first
 // probable path under it. Path is "" when the rule has no usable path.
-func firstIngressHostAndPath(ing *networkingv1.Ingress) (host, path string) {
+func firstIngressHostAndPath(ing *networkingv1.Ingress) (string, string) {
 	for _, rule := range ing.Spec.Rules {
 		if rule.Host == "" {
 			continue
 		}
-		host = rule.Host
-		if rule.HTTP == nil {
-			return host, ""
-		}
-		for _, p := range rule.HTTP.Paths {
-			if isProbablePath(p.Path) {
-				return host, p.Path
+		if rule.HTTP != nil {
+			for _, p := range rule.HTTP.Paths {
+				if isProbablePath(p.Path) {
+					return rule.Host, p.Path
+				}
 			}
 		}
-		return host, ""
+		return rule.Host, ""
 	}
 	return "", ""
 }

@@ -47,12 +47,7 @@ func (w *Writer) Upsert(key string, e *Endpoint, flush bool) (bool, error) {
 		w.dirty = true
 		changed = true
 	}
-	if flush && w.dirty {
-		if err := w.flushLocked(); err != nil {
-			return changed, err
-		}
-	}
-	return changed, nil
+	return changed, w.flushIfDirty(flush)
 }
 
 // Delete drops the endpoint stored under key. The bool reports whether a
@@ -68,12 +63,7 @@ func (w *Writer) Delete(key string, flush bool) (bool, error) {
 		w.dirty = true
 		removed = true
 	}
-	if flush && w.dirty {
-		if err := w.flushLocked(); err != nil {
-			return removed, err
-		}
-	}
-	return removed, nil
+	return removed, w.flushIfDirty(flush)
 }
 
 // Flush forces the current state to disk.
@@ -83,6 +73,13 @@ func (w *Writer) Flush() error {
 	return w.flushLocked()
 }
 
+func (w *Writer) flushIfDirty(flush bool) error {
+	if flush && w.dirty {
+		return w.flushLocked()
+	}
+	return nil
+}
+
 func (w *Writer) Len() int {
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -90,8 +87,9 @@ func (w *Writer) Len() int {
 }
 
 func (w *Writer) flushLocked() error {
-	endpoints := slices.Collect(maps.Values(w.endpoints))
-	slices.SortFunc(endpoints, func(a, b *Endpoint) int { return cmp.Compare(a.Name, b.Name) })
+	endpoints := slices.SortedFunc(maps.Values(w.endpoints), func(a, b *Endpoint) int {
+		return cmp.Compare(a.Name, b.Name)
+	})
 
 	data, err := yaml.Marshal(map[string]any{"endpoints": endpoints})
 	if err != nil {

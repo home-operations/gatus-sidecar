@@ -25,7 +25,6 @@ func TestWriter_UpsertAndDelete(t *testing.T) {
 		t.Error("first Upsert should report changed=true")
 	}
 
-	// identical second upsert: no change.
 	changed, err = w.Upsert("k1", &Endpoint{Name: "a", URL: "https://a", Interval: "1m"}, true)
 	if err != nil {
 		t.Fatalf("Upsert err: %v", err)
@@ -34,7 +33,6 @@ func TestWriter_UpsertAndDelete(t *testing.T) {
 		t.Error("equal Upsert should report changed=false")
 	}
 
-	// update.
 	changed, err = w.Upsert("k1", &Endpoint{Name: "a", URL: "https://b", Interval: "1m"}, true)
 	if err != nil {
 		t.Fatalf("Upsert err: %v", err)
@@ -43,7 +41,6 @@ func TestWriter_UpsertAndDelete(t *testing.T) {
 		t.Error("Upsert with new URL should report changed=true")
 	}
 
-	// delete.
 	removed, err := w.Delete("k1", true)
 	if err != nil {
 		t.Fatalf("Delete err: %v", err)
@@ -70,8 +67,8 @@ func TestWriter_Flush_SortsAndMatchesYAMLShape(t *testing.T) {
 		{Name: "alpha", URL: "a", Interval: "1m", Conditions: []string{"[STATUS] == 200"}},
 		{Name: "mid", URL: "m", Interval: "1m"},
 	}
-	for i, e := range endpoints {
-		if _, err := w.Upsert(e.Name+string(rune('0'+i)), e, false); err != nil {
+	for _, e := range endpoints {
+		if _, err := w.Upsert(e.Name, e, false); err != nil {
 			t.Fatalf("Upsert: %v", err)
 		}
 	}
@@ -84,7 +81,6 @@ func TestWriter_Flush_SortsAndMatchesYAMLShape(t *testing.T) {
 		t.Fatalf("ReadFile: %v", err)
 	}
 
-	// alphabetical ordering.
 	out := string(data)
 	if !strings.Contains(out, "alpha") || strings.Index(out, "alpha") > strings.Index(out, "mid") {
 		t.Error("alpha should appear before mid")
@@ -93,7 +89,6 @@ func TestWriter_Flush_SortsAndMatchesYAMLShape(t *testing.T) {
 		t.Error("mid should appear before zebra")
 	}
 
-	// valid YAML shape.
 	var doc struct {
 		Endpoints []map[string]any `yaml:"endpoints"`
 	}
@@ -113,7 +108,6 @@ func TestWriter_FlushIsAtomic(t *testing.T) {
 		t.Fatalf("Upsert: %v", err)
 	}
 
-	// no tmp files left behind.
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		t.Fatalf("ReadDir: %v", err)
@@ -131,12 +125,10 @@ func TestWriter_Concurrent(t *testing.T) {
 	w := NewWriter(path)
 
 	var wg sync.WaitGroup
-	for i := 0; i < 50; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range 50 {
+		wg.Go(func() {
 			_, _ = w.Upsert("k", &Endpoint{Name: "a", URL: "x", Interval: "1m"}, true)
-		}()
+		})
 	}
 	wg.Wait()
 

@@ -110,8 +110,8 @@ func firstHTTPRoutePath(route *gatewayv1.HTTPRoute) string {
 			if match.Path.Type != nil && *match.Path.Type == gatewayv1.PathMatchRegularExpression {
 				continue
 			}
-			if isProbablePath(*match.Path.Value) {
-				return *match.Path.Value
+			if value := *match.Path.Value; isProbablePath(value) {
+				return value
 			}
 		}
 	}
