@@ -17,11 +17,11 @@
 - [Quick start](#quick-start)
 - [Deployment](#deployment)
 - [Configuration](#configuration)
-  - [Flag reference](#flag-reference)
-  - [Annotations](#annotations)
-  - [Template merging](#template-merging)
-  - [URL derivation](#url-derivation)
-  - [Guarded probes](#guarded-probes)
+    - [Flag reference](#flag-reference)
+    - [Annotations](#annotations)
+    - [Template merging](#template-merging)
+    - [URL derivation](#url-derivation)
+    - [Guarded probes](#guarded-probes)
 - [Examples](#examples)
 - [Development](#development)
 - [Architecture](#architecture)
@@ -42,12 +42,12 @@ Maintaining a Gatus config by hand stops scaling once you have more than a handf
 
 ## Resource support
 
-| Resource | Group / Version | Parent (annotation inheritance) | URL shape |
-|---|---|---|---|
-| **Ingress** | `networking.k8s.io/v1` | `IngressClass` | `http(s)://<host><path>` |
-| **Service** | `v1` | — | `<proto>://<name>.<namespace>.svc:<port>` |
-| **HTTPRoute** | `gateway.networking.k8s.io/v1` | `Gateway` | `https://<host><path>` |
-| **IngressRoute** | `traefik.io/v1alpha1` | — | `http(s)://<host><path>` |
+| Resource         | Group / Version                | Parent (annotation inheritance) | URL shape                                 |
+| ---------------- | ------------------------------ | ------------------------------- | ----------------------------------------- |
+| **Ingress**      | `networking.k8s.io/v1`         | `IngressClass`                  | `http(s)://<host><path>`                  |
+| **Service**      | `v1`                           | —                               | `<proto>://<name>.<namespace>.svc:<port>` |
+| **HTTPRoute**    | `gateway.networking.k8s.io/v1` | `Gateway`                       | `https://<host><path>`                    |
+| **IngressRoute** | `traefik.io/v1alpha1`          | —                               | `http(s)://<host><path>`                  |
 
 ## Quick start
 
@@ -76,27 +76,27 @@ sub-config.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: gatus
+    name: gatus
 spec:
-  template:
-    spec:
-      serviceAccountName: gatus-sidecar
-      containers:
-        - name: gatus
-          image: ghcr.io/twin/gatus:latest
-          volumeMounts:
-            - { name: gatus-config, mountPath: /config }
-        - name: gatus-sidecar
-          image: ghcr.io/home-operations/gatus-sidecar:latest
-          args:
-            - --auto-ingress
-            - --auto-service
-            - --auto-httproute
-            - --gateway-name=production
-          volumeMounts:
-            - { name: gatus-config, mountPath: /config }
-      volumes:
-        - { name: gatus-config, emptyDir: {} }
+    template:
+        spec:
+            serviceAccountName: gatus-sidecar
+            containers:
+                - name: gatus
+                  image: ghcr.io/twin/gatus:latest
+                  volumeMounts:
+                      - { name: gatus-config, mountPath: /config }
+                - name: gatus-sidecar
+                  image: ghcr.io/home-operations/gatus-sidecar:latest
+                  args:
+                      - --auto-ingress
+                      - --auto-service
+                      - --auto-httproute
+                      - --gateway-name=production
+                  volumeMounts:
+                      - { name: gatus-config, mountPath: /config }
+            volumes:
+                - { name: gatus-config, emptyDir: {} }
 ```
 
 Minimum RBAC for the controllers you enable:
@@ -106,18 +106,18 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata: { name: gatus-sidecar }
 rules:
-  - apiGroups: [""]
-    resources: ["services"]
-    verbs: ["get", "list", "watch"]
-  - apiGroups: ["networking.k8s.io"]
-    resources: ["ingresses", "ingressclasses"]
-    verbs: ["get", "list", "watch"]
-  - apiGroups: ["gateway.networking.k8s.io"]
-    resources: ["httproutes", "gateways"]
-    verbs: ["get", "list", "watch"]
-  - apiGroups: ["traefik.io"]
-    resources: ["ingressroutes"]
-    verbs: ["get", "list", "watch"]
+    - apiGroups: [""]
+      resources: ["services"]
+      verbs: ["get", "list", "watch"]
+    - apiGroups: ["networking.k8s.io"]
+      resources: ["ingresses", "ingressclasses"]
+      verbs: ["get", "list", "watch"]
+    - apiGroups: ["gateway.networking.k8s.io"]
+      resources: ["httproutes", "gateways"]
+      verbs: ["get", "list", "watch"]
+    - apiGroups: ["traefik.io"]
+      resources: ["ingressroutes"]
+      verbs: ["get", "list", "watch"]
 ```
 
 ## Configuration
@@ -128,21 +128,21 @@ rules:
 
 One per resource type. With no `--enable-*`/`--auto-*` flag set, every kind runs in **annotation-only** mode (resources must opt in).
 
-| Flag | Effect |
-|---|---|
-| `--auto-ingress` | Emit an endpoint for every in-scope Ingress. |
-| `--auto-service` | Emit an endpoint for every in-scope Service. |
-| `--auto-httproute` | Emit an endpoint for every in-scope HTTPRoute. |
-| `--auto-ingressroute` | Emit an endpoint for every Traefik IngressRoute. |
+| Flag                                                                               | Effect                                                                                             |
+| ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `--auto-ingress`                                                                   | Emit an endpoint for every in-scope Ingress.                                                       |
+| `--auto-service`                                                                   | Emit an endpoint for every in-scope Service.                                                       |
+| `--auto-httproute`                                                                 | Emit an endpoint for every in-scope HTTPRoute.                                                     |
+| `--auto-ingressroute`                                                              | Emit an endpoint for every Traefik IngressRoute.                                                   |
 | `--enable-ingress` `--enable-service` `--enable-httproute` `--enable-ingressroute` | Watch the kind, but only emit for resources annotated `gatus.home-operations.com/enabled: "true"`. |
 
 #### Filtering
 
-| Flag | Repeatable? | Effect |
-|---|---|---|
-| `--namespace` | no | Watch a single namespace (empty = all). |
-| `--ingress-class` | **yes** | Only Ingresses whose class is in the set are emitted. |
-| `--gateway-name` | **yes** | Only HTTPRoutes referencing a Gateway in the set are emitted. |
+| Flag              | Repeatable? | Effect                                                        |
+| ----------------- | ----------- | ------------------------------------------------------------- |
+| `--namespace`     | no          | Watch a single namespace (empty = all).                       |
+| `--ingress-class` | **yes**     | Only Ingresses whose class is in the set are emitted.         |
+| `--gateway-name`  | **yes**     | Only HTTPRoutes referencing a Gateway in the set are emitted. |
 
 > Repeatable flags can be passed multiple times: `--ingress-class=nginx --ingress-class=traefik` matches either.
 
@@ -150,30 +150,30 @@ One per resource type. With no `--enable-*`/`--auto-*` flag set, every kind runs
 
 Use these to disambiguate endpoints across resource kinds — Gatus rejects duplicate `name`s, so prefix per-kind whenever an Ingress and a Service might share a name.
 
-| Flag | Prepended to endpoint name |
-|---|---|
-| `--prefix-ingress` | Ingress endpoints |
-| `--prefix-service` | Service endpoints |
-| `--prefix-httproute` | HTTPRoute endpoints |
-| `--prefix-ingressroute` | IngressRoute endpoints |
+| Flag                    | Prepended to endpoint name |
+| ----------------------- | -------------------------- |
+| `--prefix-ingress`      | Ingress endpoints          |
+| `--prefix-service`      | Service endpoints          |
+| `--prefix-httproute`    | HTTPRoute endpoints        |
+| `--prefix-ingressroute` | IngressRoute endpoints     |
 
 #### Output & runtime
 
-| Flag | Default | Description |
-|---|---|---|
-| `--output` | `/config/gatus-sidecar.yaml` | Destination YAML file (written atomically). |
-| `--default-interval` | `1m` | Probe interval when not overridden by an annotation. |
-| `--annotation-config` | `gatus.home-operations.com/endpoint` | Annotation key for YAML template overrides. |
-| `--annotation-enabled` | `gatus.home-operations.com/enabled` | Annotation key for the on/off gate. |
-| `--log-level` | `info` | `debug` \| `info` \| `warn` \| `error`. |
+| Flag                   | Default                              | Description                                          |
+| ---------------------- | ------------------------------------ | ---------------------------------------------------- |
+| `--output`             | `/config/gatus-sidecar.yaml`         | Destination YAML file (written atomically).          |
+| `--default-interval`   | `1m`                                 | Probe interval when not overridden by an annotation. |
+| `--annotation-config`  | `gatus.home-operations.com/endpoint` | Annotation key for YAML template overrides.          |
+| `--annotation-enabled` | `gatus.home-operations.com/enabled`  | Annotation key for the on/off gate.                  |
+| `--log-level`          | `info`                               | `debug` \| `info` \| `warn` \| `error`.              |
 
 ### Annotations
 
-| Annotation | Value | Effect |
-|---|---|---|
-| `gatus.home-operations.com/enabled` | `"true"` / `"1"` | Force-include this resource in annotation-only mode, or keep it in `--auto-*` mode. |
-| `gatus.home-operations.com/enabled` | anything else | Exclude this resource even when `--auto-*` is set. |
-| `gatus.home-operations.com/endpoint` | YAML fragment | Merged into the generated endpoint (see below). |
+| Annotation                           | Value            | Effect                                                                              |
+| ------------------------------------ | ---------------- | ----------------------------------------------------------------------------------- |
+| `gatus.home-operations.com/enabled`  | `"true"` / `"1"` | Force-include this resource in annotation-only mode, or keep it in `--auto-*` mode. |
+| `gatus.home-operations.com/enabled`  | anything else    | Exclude this resource even when `--auto-*` is set.                                  |
+| `gatus.home-operations.com/endpoint` | YAML fragment    | Merged into the generated endpoint (see below).                                     |
 
 ### Template merging
 
@@ -181,14 +181,14 @@ The `endpoint` annotation accepts any subset of a Gatus endpoint. Known keys
 are merged into typed fields; unknown keys are inlined verbatim — so
 `alerts:`, `headers:`, `body:`, etc., all work out of the box.
 
-| Template key | Behavior |
-|---|---|
-| `name`, `group`, `url`, `interval` | Override the field. |
-| `conditions` | Replace the default conditions. Accepts string or list. |
-| `dns`, `client`, `ui` | Deep-merged into the field's map. |
-| `guarded` | If present, switches the endpoint to a DNS probe. |
-| `path` | Replace the auto-extracted path. Empty string forces bare host. |
-| _anything else_ | Inlined into the YAML output as-is. |
+| Template key                       | Behavior                                                        |
+| ---------------------------------- | --------------------------------------------------------------- |
+| `name`, `group`, `url`, `interval` | Override the field.                                             |
+| `conditions`                       | Replace the default conditions. Accepts string or list.         |
+| `dns`, `client`, `ui`              | Deep-merged into the field's map.                               |
+| `guarded`                          | If present, switches the endpoint to a DNS probe.               |
+| `path`                             | Replace the auto-extracted path. Empty string forces bare host. |
+| _anything else_                    | Inlined into the YAML output as-is.                             |
 
 For resources with a parent (HTTPRoute → Gateway, Ingress → IngressClass) the
 **parent's annotation is merged first; the child wins on conflicts** for
@@ -197,12 +197,12 @@ the child for per-route conditions.
 
 ### URL derivation
 
-| Resource | Host | Scheme | Path |
-|---|---|---|---|
-| **Ingress** | First rule with `host` | `https` if TLS covers that host, else `http` | First non-`/` path under the first rule's HTTP block |
-| **HTTPRoute** | `spec.hostnames[0]` | `https` (always) | First `Exact`/`PathPrefix` match value (regex matches skipped) |
-| **Service** | `<name>.<namespace>.svc` | First port's protocol, lowercased (`tcp://`, `udp://`) | — |
-| **IngressRoute** | First `Host(\`...\`)` in a route's `match` | `https` if `spec.tls` is set, else `http` | First `Path(\`...\`)` / `PathPrefix(\`...\`)` in the same `match` |
+| Resource         | Host                                     | Scheme                                                 | Path                                                           |
+| ---------------- | ---------------------------------------- | ------------------------------------------------------ | -------------------------------------------------------------- |
+| **Ingress**      | First rule with `host`                   | `https` if TLS covers that host, else `http`           | First non-`/` path under the first rule's HTTP block           |
+| **HTTPRoute**    | `spec.hostnames[0]`                      | `https` (always)                                       | First `Exact`/`PathPrefix` match value (regex matches skipped) |
+| **Service**      | `<name>.<namespace>.svc`                 | First port's protocol, lowercased (`tcp://`, `udp://`) | —                                                              |
+| **IngressRoute** | First `Host(\`...\`)`in a route's`match` | `https` if `spec.tls` is set, else `http`              | First `Path(\`...\`)`/`PathPrefix(\`...\`)`in the same`match`  |
 
 > Trivial paths (empty, `/`, non-rooted) are dropped so the URL stays bare.
 >
@@ -223,9 +223,9 @@ but you still want to know DNS is resolving.
 
 ```yaml
 metadata:
-  annotations:
-    gatus.home-operations.com/endpoint: |
-      guarded: true
+    annotations:
+        gatus.home-operations.com/endpoint: |
+            guarded: true
 ```
 
 ## Examples
@@ -236,28 +236,28 @@ metadata:
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
-  name: prod
-  annotations:
-    gatus.home-operations.com/endpoint: |
-      alerts:
-        - type: slack
-          webhook-url: https://hooks.slack.com/...
+    name: prod
+    annotations:
+        gatus.home-operations.com/endpoint: |
+            alerts:
+              - type: slack
+                webhook-url: https://hooks.slack.com/...
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  name: api
-  annotations:
-    gatus.home-operations.com/endpoint: |
-      interval: 30s
-      conditions:
-        - "[STATUS] == 200"
-        - "[RESPONSE_TIME] < 500"
+    name: api
+    annotations:
+        gatus.home-operations.com/endpoint: |
+            interval: 30s
+            conditions:
+              - "[STATUS] == 200"
+              - "[RESPONSE_TIME] < 500"
 spec:
-  parentRefs: [{ name: prod }]
-  hostnames: ["api.example.com"]
-  rules:
-    - matches: [{ path: { type: PathPrefix, value: "/v1" } }]
+    parentRefs: [{ name: prod }]
+    hostnames: ["api.example.com"]
+    rules:
+        - matches: [{ path: { type: PathPrefix, value: "/v1" } }]
 ```
 
 Generated endpoint URL: `https://api.example.com/v1` — inherits the Gateway's

@@ -167,4 +167,3 @@ jobs:
           REPO: ${{ github.repository }}
         run: |-
           gh attestation verify --repo "$REPO" "oci://ghcr.io/${REPO}@${DIGEST}"
-

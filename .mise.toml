@@ -2,7 +2,7 @@
 go = "1.26.3"
 golangci-lint = "2.12.2"
 lefthook = "2.1.8"
-yamlfmt = "0.21.0"
+oxfmt = "0.52.0"
 zizmor = "1.25.2"
 
 [tasks.fmt]
