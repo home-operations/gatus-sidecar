@@ -10,7 +10,13 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
+// autoEnabled returns a Kinds map with the named kind in auto-discovery mode.
+func autoEnabled(name string) map[string]*config.KindConfig {
+	return map[string]*config.KindConfig{name: {Auto: true}}
+}
+
 func TestAll_DefaultsToEverything(t *testing.T) {
+	t.Parallel()
 	got := All(&config.Config{})
 	if len(got) != 4 {
 		t.Errorf("got %d resources, want 4", len(got))
@@ -18,7 +24,10 @@ func TestAll_DefaultsToEverything(t *testing.T) {
 }
 
 func TestAll_HonorsExplicitFlags(t *testing.T) {
-	got := All(&config.Config{EnableIngress: true})
+	t.Parallel()
+	got := All(&config.Config{Kinds: map[string]*config.KindConfig{
+		config.KindIngress: {Enable: true},
+	}})
 	if len(got) != 1 {
 		t.Fatalf("got %d resources, want 1", len(got))
 	}
@@ -26,7 +35,10 @@ func TestAll_HonorsExplicitFlags(t *testing.T) {
 		t.Errorf("got %s, want ingresses", got[0].GVR().Resource)
 	}
 
-	got = All(&config.Config{AutoService: true, AutoHTTPRoute: true})
+	got = All(&config.Config{Kinds: map[string]*config.KindConfig{
+		config.KindService:   {Auto: true},
+		config.KindHTTPRoute: {Auto: true},
+	}})
 	names := map[string]bool{}
 	for _, r := range got {
 		names[r.GVR().Resource] = true
@@ -40,6 +52,7 @@ func TestAll_HonorsExplicitFlags(t *testing.T) {
 }
 
 func TestConvertTo(t *testing.T) {
+	t.Parallel()
 	u := &unstructured.Unstructured{
 		Object: map[string]any{
 			"apiVersion": "v1",
@@ -58,12 +71,13 @@ func TestConvertTo(t *testing.T) {
 }
 
 func TestPrefix(t *testing.T) {
-	cfg := &config.Config{
-		IngressPrefix:      "ing-",
-		ServicePrefix:      "svc-",
-		HTTPRoutePrefix:    "route-",
-		IngressRoutePrefix: "traefik-",
-	}
+	t.Parallel()
+	cfg := &config.Config{Kinds: map[string]*config.KindConfig{
+		config.KindIngress:      {Prefix: "ing-"},
+		config.KindService:      {Prefix: "svc-"},
+		config.KindHTTPRoute:    {Prefix: "route-"},
+		config.KindIngressRoute: {Prefix: "traefik-"},
+	}}
 	cases := map[string]string{
 		"ing-":     Ingress{}.Prefix(cfg),
 		"svc-":     Service{}.Prefix(cfg),
@@ -78,6 +92,7 @@ func TestPrefix(t *testing.T) {
 }
 
 func TestHasGatusAnnotations(t *testing.T) {
+	t.Parallel()
 	cfg := &config.Config{
 		EnabledAnnotation:  "enabled",
 		TemplateAnnotation: "tpl",
@@ -94,9 +109,37 @@ func TestHasGatusAnnotations(t *testing.T) {
 	}
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			obj := &corev1.Service{ObjectMeta: metav1.ObjectMeta{Annotations: tt.ann}}
 			if got := hasGatusAnnotations(obj, cfg); got != tt.want {
 				t.Errorf("hasGatusAnnotations() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestIsExplicitlyDisabled(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name string
+		ann  map[string]string
+		want bool
+	}{
+		{"absent", nil, false},
+		{"true", map[string]string{"enabled": "true"}, false},
+		{"True", map[string]string{"enabled": "True"}, false},
+		{"TRUE", map[string]string{"enabled": "TRUE"}, false},
+		{"one", map[string]string{"enabled": "1"}, false},
+		{"false", map[string]string{"enabled": "false"}, true},
+		{"zero", map[string]string{"enabled": "0"}, true},
+		{"empty", map[string]string{"enabled": ""}, true},
+		{"unparseable", map[string]string{"enabled": "yes"}, true},
+	}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			if got := isExplicitlyDisabled(tt.ann, "enabled"); got != tt.want {
+				t.Errorf("isExplicitlyDisabled() = %v, want %v", got, tt.want)
 			}
 		})
 	}

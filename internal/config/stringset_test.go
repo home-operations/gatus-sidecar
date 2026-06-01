@@ -7,6 +7,7 @@ import (
 )
 
 func TestStringSet_Set(t *testing.T) {
+	t.Parallel()
 	var s StringSet
 	for _, v := range []string{"a", "b", "a", "c", ""} {
 		if err := s.Set(v); err != nil {
@@ -19,6 +20,7 @@ func TestStringSet_Set(t *testing.T) {
 }
 
 func TestStringSet_Contains(t *testing.T) {
+	t.Parallel()
 	s := StringSet{"a", "b"}
 	if !s.Contains("a") {
 		t.Error("Contains(a) should be true")
@@ -29,6 +31,7 @@ func TestStringSet_Contains(t *testing.T) {
 }
 
 func TestStringSet_String(t *testing.T) {
+	t.Parallel()
 	s := StringSet{"a", "b"}
 	if got := s.String(); got != "a,b" {
 		t.Errorf("String() = %q, want a,b", got)
@@ -40,6 +43,7 @@ func TestStringSet_String(t *testing.T) {
 }
 
 func TestStringSet_ImplementsFlagValue(t *testing.T) {
+	t.Parallel()
 	var s StringSet
 	var _ flag.Value = &s
 	fs := flag.NewFlagSet("t", flag.ContinueOnError)

@@ -30,7 +30,7 @@ type HTTPRoute struct{}
 
 func (HTTPRoute) GVR() schema.GroupVersionResource { return httpRouteGVR }
 
-func (HTTPRoute) Prefix(cfg *config.Config) string { return cfg.HTTPRoutePrefix }
+func (HTTPRoute) Prefix(cfg *config.Config) string { return cfg.Prefix(config.KindHTTPRoute) }
 
 func (HTTPRoute) Convert(u *unstructured.Unstructured) (metav1.Object, error) {
 	return convertTo[gatewayv1.HTTPRoute](u)
@@ -44,7 +44,7 @@ func (HTTPRoute) Matches(obj metav1.Object, cfg *config.Config) bool {
 	if len(cfg.GatewayNames) > 0 && !httpRouteReferencesAnyGateway(route, cfg.GatewayNames) {
 		return false
 	}
-	return matchesAnnotation(obj, cfg.AutoHTTPRoute, cfg)
+	return matchesAnnotation(obj, cfg.AutoEnabled(config.KindHTTPRoute), cfg)
 }
 
 func (HTTPRoute) URL(obj metav1.Object) string {

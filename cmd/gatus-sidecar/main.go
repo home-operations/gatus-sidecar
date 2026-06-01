@@ -61,7 +61,6 @@ func run(name string, args []string) error {
 	for _, r := range enabled {
 		c := k8s.NewController(cfg, r, writer, dc)
 		wg.Go(func() {
-			slog.Info("controller starting", "resource", c.Resource())
 			if err := c.Run(ctx); err != nil {
 				slog.Error("controller stopped", "resource", c.Resource(), "error", err)
 				cancel()

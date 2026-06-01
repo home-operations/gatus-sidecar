@@ -26,6 +26,7 @@ func makeRoute(name string, hostnames []gatewayv1.Hostname, parentRefs []gateway
 }
 
 func TestHTTPRoute_URL(t *testing.T) {
+	t.Parallel()
 	exact := gatewayv1.PathMatchExact
 	prefix := gatewayv1.PathMatchPathPrefix
 	regex := gatewayv1.PathMatchRegularExpression
@@ -58,6 +59,7 @@ func TestHTTPRoute_URL(t *testing.T) {
 	}
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			if got := (HTTPRoute{}).URL(tt.in); got != tt.want {
 				t.Errorf("URL() = %q, want %q", got, tt.want)
 			}
@@ -66,6 +68,7 @@ func TestHTTPRoute_URL(t *testing.T) {
 }
 
 func TestHTTPRoute_Matches(t *testing.T) {
+	t.Parallel()
 	gw := gatewayv1.ObjectName("gw")
 	cases := []struct {
 		name string
@@ -76,31 +79,31 @@ func TestHTTPRoute_Matches(t *testing.T) {
 		{
 			name: "auto + no filter",
 			obj:  makeRoute("r", []gatewayv1.Hostname{"x"}, nil, nil),
-			cfg:  &config.Config{AutoHTTPRoute: true},
+			cfg:  &config.Config{Kinds: autoEnabled(config.KindHTTPRoute)},
 			want: true,
 		},
 		{
 			name: "gateway filter mismatch",
 			obj:  makeRoute("r", []gatewayv1.Hostname{"x"}, []gatewayv1.ParentReference{{Name: gw}}, nil),
-			cfg:  &config.Config{AutoHTTPRoute: true, GatewayNames: config.StringSet{"other"}},
+			cfg:  &config.Config{Kinds: autoEnabled(config.KindHTTPRoute), GatewayNames: config.StringSet{"other"}},
 			want: false,
 		},
 		{
 			name: "gateway filter match",
 			obj:  makeRoute("r", []gatewayv1.Hostname{"x"}, []gatewayv1.ParentReference{{Name: gw}}, nil),
-			cfg:  &config.Config{AutoHTTPRoute: true, GatewayNames: config.StringSet{"gw"}},
+			cfg:  &config.Config{Kinds: autoEnabled(config.KindHTTPRoute), GatewayNames: config.StringSet{"gw"}},
 			want: true,
 		},
 		{
 			name: "matches any of multiple gateway names",
 			obj:  makeRoute("r", []gatewayv1.Hostname{"x"}, []gatewayv1.ParentReference{{Name: gw}}, nil),
-			cfg:  &config.Config{AutoHTTPRoute: true, GatewayNames: config.StringSet{"other", "gw", "third"}},
+			cfg:  &config.Config{Kinds: autoEnabled(config.KindHTTPRoute), GatewayNames: config.StringSet{"other", "gw", "third"}},
 			want: true,
 		},
 		{
 			name: "rejects when none of multiple gateway names match",
 			obj:  makeRoute("r", []gatewayv1.Hostname{"x"}, []gatewayv1.ParentReference{{Name: gw}}, nil),
-			cfg:  &config.Config{AutoHTTPRoute: true, GatewayNames: config.StringSet{"a", "b"}},
+			cfg:  &config.Config{Kinds: autoEnabled(config.KindHTTPRoute), GatewayNames: config.StringSet{"a", "b"}},
 			want: false,
 		},
 		{
@@ -115,12 +118,13 @@ func TestHTTPRoute_Matches(t *testing.T) {
 		{
 			name: "non-route",
 			obj:  &corev1.Pod{},
-			cfg:  &config.Config{AutoHTTPRoute: true},
+			cfg:  &config.Config{Kinds: autoEnabled(config.KindHTTPRoute)},
 			want: false,
 		},
 	}
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			if got := (HTTPRoute{}).Matches(tt.obj, tt.cfg); got != tt.want {
 				t.Errorf("Matches() = %v, want %v", got, tt.want)
 			}
@@ -129,6 +133,7 @@ func TestHTTPRoute_Matches(t *testing.T) {
 }
 
 func TestHTTPRoute_DefaultConditionsAndGuardHost(t *testing.T) {
+	t.Parallel()
 	if got := (HTTPRoute{}).DefaultConditions(); len(got) != 1 || got[0] != "[STATUS] == 200" {
 		t.Errorf("DefaultConditions() = %v", got)
 	}
@@ -141,6 +146,7 @@ func TestHTTPRoute_DefaultConditionsAndGuardHost(t *testing.T) {
 }
 
 func TestHTTPRoute_ParentAnnotations(t *testing.T) {
+	t.Parallel()
 	scheme := runtime.NewScheme()
 	scheme.AddKnownTypeWithName(gatewayGVR.GroupVersion().WithKind("Gateway"), &unstructured.Unstructured{})
 	scheme.AddKnownTypeWithName(gatewayGVR.GroupVersion().WithKind("GatewayList"), &unstructured.UnstructuredList{})
@@ -165,6 +171,7 @@ func TestHTTPRoute_ParentAnnotations(t *testing.T) {
 }
 
 func TestHTTPRoute_ParentAnnotations_NoParents(t *testing.T) {
+	t.Parallel()
 	scheme := runtime.NewScheme()
 	client := fake.NewSimpleDynamicClient(scheme)
 	route := makeRoute("r", []gatewayv1.Hostname{"x"}, nil, nil)
@@ -174,6 +181,7 @@ func TestHTTPRoute_ParentAnnotations_NoParents(t *testing.T) {
 }
 
 func TestHTTPRoute_ParentAnnotations_NonGatewayKind(t *testing.T) {
+	t.Parallel()
 	scheme := runtime.NewScheme()
 	client := fake.NewSimpleDynamicClient(scheme)
 	kind := gatewayv1.Kind("Service")

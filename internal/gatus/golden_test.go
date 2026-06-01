@@ -11,6 +11,7 @@ import (
 // to the marshalled output requires updating the golden string here, so that
 // downstream gatus configuration breakage is caught at compile-test time.
 func TestWriter_GoldenOutput(t *testing.T) {
+	t.Parallel()
 	w := NewWriter(filepath.Join(t.TempDir(), "out.yaml"))
 
 	e := &Endpoint{

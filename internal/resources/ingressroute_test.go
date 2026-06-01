@@ -28,6 +28,7 @@ func makeIngressRouteWithMatch(match string, tls bool) *unstructured.Unstructure
 }
 
 func TestIngressRoute_URL(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name string
 		obj  metav1.Object
@@ -54,6 +55,7 @@ func TestIngressRoute_URL(t *testing.T) {
 	}
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			if got := (IngressRoute{}).URL(tt.obj); got != tt.want {
 				t.Errorf("URL() = %q, want %q", got, tt.want)
 			}
@@ -62,6 +64,7 @@ func TestIngressRoute_URL(t *testing.T) {
 }
 
 func TestIngressRoute_DefaultConditionsAndGuardHost(t *testing.T) {
+	t.Parallel()
 	if got := (IngressRoute{}).DefaultConditions(); len(got) != 1 || got[0] != "[STATUS] == 200" {
 		t.Errorf("DefaultConditions() = %v", got)
 	}
@@ -74,6 +77,7 @@ func TestIngressRoute_DefaultConditionsAndGuardHost(t *testing.T) {
 }
 
 func TestMatchTraefikHost(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		expr, want string
 	}{
@@ -85,6 +89,7 @@ func TestMatchTraefikHost(t *testing.T) {
 	}
 	for _, tt := range cases {
 		t.Run(tt.expr, func(t *testing.T) {
+			t.Parallel()
 			if got := matchTraefikHost(tt.expr); got != tt.want {
 				t.Errorf("matchTraefikHost(%q) = %q, want %q", tt.expr, got, tt.want)
 			}
@@ -93,6 +98,7 @@ func TestMatchTraefikHost(t *testing.T) {
 }
 
 func TestIngressRouteHasTLS(t *testing.T) {
+	t.Parallel()
 	u := &unstructured.Unstructured{Object: map[string]any{}}
 	if err := unstructured.SetNestedMap(u.Object, map[string]any{"secretName": "s"}, "spec", "tls"); err != nil {
 		t.Fatalf("SetNestedMap: %v", err)

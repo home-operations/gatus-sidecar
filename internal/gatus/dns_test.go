@@ -3,7 +3,9 @@ package gatus
 import "testing"
 
 func TestApplyGuardedDNS(t *testing.T) {
+	t.Parallel()
 	t.Run("populates fields", func(t *testing.T) {
+		t.Parallel()
 		e := &Endpoint{}
 		ApplyGuardedDNS("example.com", e)
 		if e.URL != GuardedProbeURL {
@@ -18,6 +20,7 @@ func TestApplyGuardedDNS(t *testing.T) {
 	})
 
 	t.Run("empty host is no-op", func(t *testing.T) {
+		t.Parallel()
 		e := &Endpoint{}
 		ApplyGuardedDNS("", e)
 		if e.URL != "" || e.DNS != nil || e.Conditions != nil {
@@ -26,6 +29,7 @@ func TestApplyGuardedDNS(t *testing.T) {
 	})
 
 	t.Run("nil endpoint is no-op", func(t *testing.T) {
+		t.Parallel()
 		// just verify it doesn't panic
 		ApplyGuardedDNS("example.com", nil)
 	})

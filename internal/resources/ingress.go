@@ -33,7 +33,7 @@ type Ingress struct{}
 
 func (Ingress) GVR() schema.GroupVersionResource { return ingressGVR }
 
-func (Ingress) Prefix(cfg *config.Config) string { return cfg.IngressPrefix }
+func (Ingress) Prefix(cfg *config.Config) string { return cfg.Prefix(config.KindIngress) }
 
 func (Ingress) Convert(u *unstructured.Unstructured) (metav1.Object, error) {
 	return convertTo[networkingv1.Ingress](u)
@@ -47,7 +47,7 @@ func (Ingress) Matches(obj metav1.Object, cfg *config.Config) bool {
 	if len(cfg.IngressClasses) > 0 && !cfg.IngressClasses.Contains(ingressClassOf(ing)) {
 		return false
 	}
-	return matchesAnnotation(obj, cfg.AutoIngress, cfg)
+	return matchesAnnotation(obj, cfg.AutoEnabled(config.KindIngress), cfg)
 }
 
 func (Ingress) URL(obj metav1.Object) string {

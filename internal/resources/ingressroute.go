@@ -28,7 +28,7 @@ type IngressRoute struct{}
 
 func (IngressRoute) GVR() schema.GroupVersionResource { return ingressRouteGVR }
 
-func (IngressRoute) Prefix(cfg *config.Config) string { return cfg.IngressRoutePrefix }
+func (IngressRoute) Prefix(cfg *config.Config) string { return cfg.Prefix(config.KindIngressRoute) }
 
 func (IngressRoute) Convert(u *unstructured.Unstructured) (metav1.Object, error) {
 	return u, nil
@@ -38,7 +38,7 @@ func (IngressRoute) Matches(obj metav1.Object, cfg *config.Config) bool {
 	if _, ok := obj.(*unstructured.Unstructured); !ok {
 		return false
 	}
-	return matchesAnnotation(obj, cfg.AutoIngressRoute, cfg)
+	return matchesAnnotation(obj, cfg.AutoEnabled(config.KindIngressRoute), cfg)
 }
 
 func (IngressRoute) URL(obj metav1.Object) string {

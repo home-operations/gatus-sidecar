@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/url"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -37,6 +36,7 @@ type Controller struct {
 	fetcher  Fetcher
 	informer cache.SharedIndexInformer
 	queue    workqueue.TypedRateLimitingInterface[string]
+	log      *slog.Logger
 }
 
 func NewController(cfg *config.Config, r Resource, w *gatus.Writer, client dynamic.Interface) *Controller {
@@ -56,6 +56,7 @@ func NewController(cfg *config.Config, r Resource, w *gatus.Writer, client dynam
 		fetcher:  NewFetcher(client),
 		informer: informer,
 		queue:    queue,
+		log:      slog.With("resource", r.GVR().Resource),
 	}
 
 	_, _ = informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -81,18 +82,19 @@ func (c *Controller) Resource() string {
 
 // Run blocks until ctx is cancelled.
 func (c *Controller) Run(ctx context.Context) error {
+	c.log.Info("controller starting")
 	go c.informer.Run(ctx.Done())
 
 	if !cache.WaitForCacheSync(ctx.Done(), c.informer.HasSynced) {
 		return fmt.Errorf("cache sync failed for %s", c.Resource())
 	}
-	slog.Info("informer synced", "resource", c.Resource(), "count", len(c.informer.GetIndexer().ListKeys()))
+	c.log.Info("informer synced", "count", len(c.informer.GetIndexer().ListKeys()))
 
 	// Drain the queue once before workers start so the file is flushed once,
 	// not N times during initial sync.
 	c.initialReconcile(ctx)
 	if err := c.writer.Flush(); err != nil {
-		slog.Error("initial flush failed", "resource", c.Resource(), "error", err)
+		c.log.Error("initial flush failed", "error", err)
 	}
 
 	var wg sync.WaitGroup
@@ -126,7 +128,7 @@ func (c *Controller) initialReconcile(ctx context.Context) {
 func (c *Controller) enqueue(obj any) {
 	key, err := cache.MetaNamespaceKeyFunc(obj)
 	if err != nil {
-		slog.Error("derive cache key", "resource", c.Resource(), "error", err)
+		c.log.Error("derive cache key", "error", err)
 		return
 	}
 	c.queue.Add(key)
@@ -147,14 +149,12 @@ func (c *Controller) processNext(ctx context.Context) bool {
 	if err := c.reconcile(ctx, key, true); err != nil {
 		retries := c.queue.NumRequeues(key)
 		if retries < defaultMaxRetry {
-			slog.Warn("reconcile failed, requeueing",
-				"resource", c.Resource(), "key", key, "error", err,
-				"retries", retries)
+			c.log.Warn("reconcile failed, requeueing",
+				"key", key, "error", err, "retries", retries)
 			c.queue.AddRateLimited(key)
 			return true
 		}
-		slog.Error("reconcile failed, giving up",
-			"resource", c.Resource(), "key", key, "error", err)
+		c.log.Error("reconcile failed, giving up", "key", key, "error", err)
 	}
 	c.queue.Forget(key)
 	return true
@@ -187,15 +187,14 @@ func (c *Controller) reconcile(ctx context.Context, key string, flush bool) erro
 		return fmt.Errorf("convert: %w", err)
 	}
 
-	if !c.resource.Matches(obj, c.cfg) || isExplicitlyDisabled(obj.GetAnnotations(), c.cfg.EnabledAnnotation) {
+	if !c.resource.Matches(obj, c.cfg) {
 		return c.removeEndpoint(endpointKey, namespace, name, "not-matched", flush)
 	}
 
 	probeURL := c.resource.URL(obj)
 	if probeURL == "" {
 		// Per-resync per-resource; common for headless Services.
-		slog.Debug("resource has no derivable URL",
-			"resource", c.Resource(), "namespace", namespace, "name", name)
+		c.log.Debug("resource has no derivable URL", "namespace", namespace, "name", name)
 		return c.removeEndpoint(endpointKey, namespace, name, "no-url", flush)
 	}
 
@@ -230,8 +229,7 @@ func (c *Controller) reconcile(ctx context.Context, key string, flush bool) erro
 		return fmt.Errorf("write after upsert: %w", err)
 	}
 	if changed {
-		slog.Info("updated endpoint",
-			"resource", c.Resource(), "namespace", namespace, "name", name, "url", e.URL)
+		c.log.Info("updated endpoint", "namespace", namespace, "name", name, "url", e.URL)
 	}
 	return nil
 }
@@ -255,8 +253,7 @@ func (c *Controller) removeEndpoint(key, namespace, name, reason string, flush b
 		return fmt.Errorf("write after delete: %w", err)
 	}
 	if removed {
-		slog.Info("removed endpoint",
-			"resource", c.Resource(), "namespace", namespace, "name", name, "reason", reason)
+		c.log.Info("removed endpoint", "namespace", namespace, "name", name, "reason", reason)
 	}
 	return nil
 }
@@ -280,16 +277,4 @@ func setURLPath(rawURL, path string) string {
 	}
 	u.Path = path
 	return u.String()
-}
-
-// isExplicitlyDisabled returns true only when the annotation is present *and*
-// falsy. Absence is not "disabled". Unparseable values (e.g. empty, "yes")
-// are treated as disabled so a typo can't silently widen monitoring.
-func isExplicitlyDisabled(annotations map[string]string, key string) bool {
-	v, ok := annotations[key]
-	if !ok {
-		return false
-	}
-	enabled, err := strconv.ParseBool(v)
-	return err != nil || !enabled
 }

@@ -5,6 +5,7 @@ package resources
 import (
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 
 	"github.com/home-operations/gatus-sidecar/internal/config"
@@ -39,30 +40,37 @@ func formatURL(host, path string, useTLS bool) string {
 }
 
 // matchesAnnotation accepts obj when auto-mode is on or when an explicit
-// gatus annotation opts the resource in. Callers run any kind-specific
-// filter (ingress class, gateway name) before this.
+// gatus annotation opts the resource in, unless the enabled annotation is
+// explicitly falsy. Callers run any kind-specific filter (ingress class,
+// gateway name) before this.
 func matchesAnnotation(obj metav1.Object, auto bool, cfg *config.Config) bool {
+	if isExplicitlyDisabled(obj.GetAnnotations(), cfg.EnabledAnnotation) {
+		return false
+	}
 	return auto || hasGatusAnnotations(obj, cfg)
 }
 
+// registry maps each kind name to its Resource constructor. It is the single
+// source of truth for which kinds exist and the order they're created in.
+var registry = []struct {
+	name string
+	new  func() k8s.Resource
+}{
+	{config.KindIngress, func() k8s.Resource { return Ingress{} }},
+	{config.KindHTTPRoute, func() k8s.Resource { return HTTPRoute{} }},
+	{config.KindService, func() k8s.Resource { return Service{} }},
+	{config.KindIngressRoute, func() k8s.Resource { return IngressRoute{} }},
+}
+
 // All returns the Resource implementations enabled by cfg. With no flag set,
-// all four kinds run in annotation-only mode.
+// all kinds run in annotation-only mode.
 func All(cfg *config.Config) []k8s.Resource {
-	if !cfg.AnyExplicitlyEnabled() {
-		return []k8s.Resource{Ingress{}, HTTPRoute{}, Service{}, IngressRoute{}}
-	}
-	out := make([]k8s.Resource, 0, 4)
-	if cfg.EnableIngress || cfg.AutoIngress {
-		out = append(out, Ingress{})
-	}
-	if cfg.EnableHTTPRoute || cfg.AutoHTTPRoute {
-		out = append(out, HTTPRoute{})
-	}
-	if cfg.EnableService || cfg.AutoService {
-		out = append(out, Service{})
-	}
-	if cfg.EnableIngressRoute || cfg.AutoIngressRoute {
-		out = append(out, IngressRoute{})
+	annotationOnly := !cfg.AnyExplicitlyEnabled()
+	out := make([]k8s.Resource, 0, len(registry))
+	for _, e := range registry {
+		if annotationOnly || cfg.KindEnabled(e.name) {
+			out = append(out, e.new())
+		}
 	}
 	return out
 }
@@ -88,4 +96,16 @@ func hasGatusAnnotations(obj metav1.Object, cfg *config.Config) bool {
 	}
 	_, ok := ann[cfg.TemplateAnnotation]
 	return ok
+}
+
+// isExplicitlyDisabled returns true only when the annotation is present *and*
+// falsy. Absence is not "disabled". Unparseable values (e.g. empty, "yes")
+// are treated as disabled so a typo can't silently widen monitoring.
+func isExplicitlyDisabled(annotations map[string]string, key string) bool {
+	v, ok := annotations[key]
+	if !ok {
+		return false
+	}
+	enabled, err := strconv.ParseBool(v)
+	return err != nil || !enabled
 }

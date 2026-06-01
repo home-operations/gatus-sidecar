@@ -15,7 +15,7 @@ run = "go vet ./..."
 
 [tasks.test]
 description = "Run tests with coverage"
-run = "go test $(go list ./...) -coverprofile cover.out"
+run = "go test -race $(go list ./...) -coverprofile cover.out"
 
 [tasks.lint]
 description = "Run golangci-lint"

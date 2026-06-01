@@ -9,6 +9,7 @@ import (
 )
 
 func TestLoad_Defaults(t *testing.T) {
+	t.Parallel()
 	cfg, err := Load("gatus-sidecar", nil, &bytes.Buffer{})
 	if err != nil {
 		t.Fatalf("Load returned error: %v", err)
@@ -28,6 +29,7 @@ func TestLoad_Defaults(t *testing.T) {
 }
 
 func TestLoad_AllFlags(t *testing.T) {
+	t.Parallel()
 	args := []string{
 		"--namespace=ns",
 		"--gateway-name=gw1",
@@ -50,7 +52,7 @@ func TestLoad_AllFlags(t *testing.T) {
 		!reflect.DeepEqual([]string(cfg.IngressClasses), []string{"nginx", "traefik"}) {
 		t.Errorf("filter flags incorrect: %+v", cfg)
 	}
-	if !cfg.EnableHTTPRoute || !cfg.AutoIngress {
+	if !cfg.Kinds[KindHTTPRoute].Enable || !cfg.Kinds[KindIngress].Auto {
 		t.Errorf("enable flags incorrect: %+v", cfg)
 	}
 	if cfg.Output != "/tmp/foo.yaml" {
@@ -68,6 +70,7 @@ func TestLoad_AllFlags(t *testing.T) {
 }
 
 func TestLoad_RejectsBadValues(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name string
 		args []string
@@ -78,6 +81,7 @@ func TestLoad_RejectsBadValues(t *testing.T) {
 	}
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			_, err := Load("test", tt.args, &bytes.Buffer{})
 			if err == nil {
 				t.Errorf("expected error for args %v", tt.args)
@@ -87,6 +91,7 @@ func TestLoad_RejectsBadValues(t *testing.T) {
 }
 
 func TestLoad_LogLevel(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		arg     string
 		want    slog.Level
@@ -102,6 +107,7 @@ func TestLoad_LogLevel(t *testing.T) {
 	}
 	for _, tt := range cases {
 		t.Run(tt.arg, func(t *testing.T) {
+			t.Parallel()
 			args := []string{}
 			if tt.arg != "" {
 				args = append(args, "--log-level="+tt.arg)
@@ -118,18 +124,20 @@ func TestLoad_LogLevel(t *testing.T) {
 }
 
 func TestAnyExplicitlyEnabled(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name string
 		cfg  Config
 		want bool
 	}{
 		{"none", Config{}, false},
-		{"enable-ingress", Config{EnableIngress: true}, true},
-		{"auto-service", Config{AutoService: true}, true},
-		{"auto-ingressroute", Config{AutoIngressRoute: true}, true},
+		{"enable-ingress", Config{Kinds: map[string]*KindConfig{KindIngress: {Enable: true}}}, true},
+		{"auto-service", Config{Kinds: map[string]*KindConfig{KindService: {Auto: true}}}, true},
+		{"auto-ingressroute", Config{Kinds: map[string]*KindConfig{KindIngressRoute: {Auto: true}}}, true},
 	}
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			if got := tt.cfg.AnyExplicitlyEnabled(); got != tt.want {
 				t.Errorf("AnyExplicitlyEnabled() = %v, want %v", got, tt.want)
 			}
