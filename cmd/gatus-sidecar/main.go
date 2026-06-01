@@ -20,6 +20,11 @@ import (
 	"k8s.io/client-go/dynamic"
 )
 
+var (
+	Version = "local"
+	Gitsha  = "?"
+)
+
 func main() {
 	if err := run(os.Args[0], os.Args[1:]); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
@@ -36,6 +41,7 @@ func run(name string, args []string) error {
 		return err
 	}
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: cfg.LogLevel})))
+	slog.Info("starting gatus-sidecar", "version", Version, "gitsha", Gitsha)
 
 	enabled := resources.All(cfg)
 	if len(enabled) == 0 {
