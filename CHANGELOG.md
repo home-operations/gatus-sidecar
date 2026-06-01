@@ -53,6 +53,24 @@
   documented annotation behavior, URL-derivation rules, and the new prefix /
   multi-value-filter / log-level flags.
 
+## [0.0.19](https://github.com/home-operations/gatus-sidecar/compare/0.0.18...0.0.19) (2026-06-01)
+
+
+### Bug Fixes
+
+* **mise:** update tool lefthook (2.1.8 → 2.1.9) ([bf4d840](https://github.com/home-operations/gatus-sidecar/commit/bf4d8409a76c3933f7b58992b2f2d2fb6ffd58d5))
+
+
+### Miscellaneous Chores
+
+* implement oxfmt ([8976e28](https://github.com/home-operations/gatus-sidecar/commit/8976e28671bddd50dc84b49fe8d43cffc1433673))
+* remove default draft-pull-request from release-please config ([f0f86dd](https://github.com/home-operations/gatus-sidecar/commit/f0f86dd2285c9b257823c09041b1ebeed16357c0))
+
+
+### Code Refactoring
+
+* data-driven kind registry, scoped logging, test hardening ([#70](https://github.com/home-operations/gatus-sidecar/issues/70)) ([cce0eb4](https://github.com/home-operations/gatus-sidecar/commit/cce0eb4ff6f24d66ebb22bd18cdd28f7179d4e32))
+
 ## [0.0.18](https://github.com/home-operations/gatus-sidecar/compare/0.0.17...0.0.18) (2026-05-21)
 
 
