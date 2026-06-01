@@ -18,20 +18,40 @@ const (
 	DefaultLogLevel           = "info"
 )
 
+// Kind identifiers — the canonical set of watchable resource kinds. The values
+// double as the suffix of the per-kind flags (e.g. KindIngress → --enable-ingress).
+const (
+	KindIngress      = "ingress"
+	KindHTTPRoute    = "httproute"
+	KindService      = "service"
+	KindIngressRoute = "ingressroute"
+)
+
+// kindMeta drives per-kind flag registration and help text.
+var kindMeta = []struct {
+	name    string
+	display string
+	plural  string
+}{
+	{KindIngress, "Ingress", "Ingresses"},
+	{KindHTTPRoute, "HTTPRoute", "HTTPRoutes"},
+	{KindService, "Service", "Services"},
+	{KindIngressRoute, "Traefik IngressRoute", "Traefik IngressRoutes"},
+}
+
+// KindConfig holds the per-kind flag values.
+type KindConfig struct {
+	Enable bool
+	Auto   bool
+	Prefix string
+}
+
 type Config struct {
 	Namespace      string
 	GatewayNames   StringSet
 	IngressClasses StringSet
 
-	EnableHTTPRoute    bool
-	EnableIngress      bool
-	EnableService      bool
-	EnableIngressRoute bool
-
-	AutoHTTPRoute    bool
-	AutoIngress      bool
-	AutoService      bool
-	AutoIngressRoute bool
+	Kinds map[string]*KindConfig
 
 	Output          string
 	DefaultInterval time.Duration
@@ -39,11 +59,6 @@ type Config struct {
 
 	TemplateAnnotation string
 	EnabledAnnotation  string
-
-	IngressPrefix      string
-	ServicePrefix      string
-	HTTPRoutePrefix    string
-	IngressRoutePrefix string
 
 	LogLevel slog.Level
 }
@@ -58,26 +73,20 @@ func Load(name string, args []string, errOut io.Writer) (*Config, error) {
 	fs.Var(&cfg.GatewayNames, "gateway-name", "Gateway name(s) to filter HTTPRoutes; may be repeated")
 	fs.Var(&cfg.IngressClasses, "ingress-class", "Ingress class(es) to filter Ingresses; may be repeated")
 
-	fs.BoolVar(&cfg.EnableHTTPRoute, "enable-httproute", false, "Enable HTTPRoute endpoint generation")
-	fs.BoolVar(&cfg.EnableIngress, "enable-ingress", false, "Enable Ingress endpoint generation")
-	fs.BoolVar(&cfg.EnableService, "enable-service", false, "Enable Service endpoint generation")
-	fs.BoolVar(&cfg.EnableIngressRoute, "enable-ingressroute", false, "Enable Traefik IngressRoute endpoint generation")
-
-	fs.BoolVar(&cfg.AutoHTTPRoute, "auto-httproute", false, "Automatically create endpoints for HTTPRoutes")
-	fs.BoolVar(&cfg.AutoIngress, "auto-ingress", false, "Automatically create endpoints for Ingresses")
-	fs.BoolVar(&cfg.AutoService, "auto-service", false, "Automatically create endpoints for Services")
-	fs.BoolVar(&cfg.AutoIngressRoute, "auto-ingressroute", false, "Automatically create endpoints for Traefik IngressRoutes")
+	cfg.Kinds = make(map[string]*KindConfig, len(kindMeta))
+	for _, k := range kindMeta {
+		kc := &KindConfig{}
+		cfg.Kinds[k.name] = kc
+		fs.BoolVar(&kc.Enable, "enable-"+k.name, false, fmt.Sprintf("Enable %s endpoint generation", k.display))
+		fs.BoolVar(&kc.Auto, "auto-"+k.name, false, fmt.Sprintf("Automatically create endpoints for %s", k.plural))
+		fs.StringVar(&kc.Prefix, "prefix-"+k.name, "", fmt.Sprintf("Prefix prepended to generated endpoint names for %s resources", k.display))
+	}
 
 	fs.StringVar(&cfg.Output, "output", DefaultOutputPath, "File to write generated YAML")
 	fs.DurationVar(&cfg.DefaultInterval, "default-interval", DefaultInterval, "Default interval value for endpoints")
 	fs.BoolVar(&cfg.ProbePaths, "probe-paths", true, "Include paths from Ingress/HTTPRoute/IngressRoute match rules in probe URLs; set false to probe bare hostnames")
 	fs.StringVar(&cfg.TemplateAnnotation, "annotation-config", DefaultTemplateAnnotation, "Annotation key for YAML config override")
 	fs.StringVar(&cfg.EnabledAnnotation, "annotation-enabled", DefaultEnabledAnnotation, "Annotation key for enabling/disabling resource processing")
-
-	fs.StringVar(&cfg.IngressPrefix, "prefix-ingress", "", "Prefix prepended to generated endpoint names for Ingress resources")
-	fs.StringVar(&cfg.ServicePrefix, "prefix-service", "", "Prefix prepended to generated endpoint names for Service resources")
-	fs.StringVar(&cfg.HTTPRoutePrefix, "prefix-httproute", "", "Prefix prepended to generated endpoint names for HTTPRoute resources")
-	fs.StringVar(&cfg.IngressRoutePrefix, "prefix-ingressroute", "", "Prefix prepended to generated endpoint names for Traefik IngressRoute resources")
 
 	logLevel := fs.String("log-level", DefaultLogLevel, "Log level: debug, info, warn, error")
 
@@ -117,6 +126,31 @@ func parseLogLevel(s string) (slog.Level, error) {
 
 // AnyExplicitlyEnabled reports whether any --enable-* or --auto-* flag is set.
 func (c *Config) AnyExplicitlyEnabled() bool {
-	return c.EnableHTTPRoute || c.EnableIngress || c.EnableService || c.EnableIngressRoute ||
-		c.AutoHTTPRoute || c.AutoIngress || c.AutoService || c.AutoIngressRoute
+	for _, k := range c.Kinds {
+		if k.Enable || k.Auto {
+			return true
+		}
+	}
+	return false
+}
+
+// KindEnabled reports whether the named kind is enabled by either its
+// --enable-<kind> or --auto-<kind> flag.
+func (c *Config) KindEnabled(name string) bool {
+	k := c.Kinds[name]
+	return k != nil && (k.Enable || k.Auto)
+}
+
+// AutoEnabled reports whether the named kind is in auto-discovery mode.
+func (c *Config) AutoEnabled(name string) bool {
+	k := c.Kinds[name]
+	return k != nil && k.Auto
+}
+
+// Prefix returns the endpoint-name prefix configured for the named kind.
+func (c *Config) Prefix(name string) string {
+	if k := c.Kinds[name]; k != nil {
+		return k.Prefix
+	}
+	return ""
 }

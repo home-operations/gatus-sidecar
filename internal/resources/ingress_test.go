@@ -46,6 +46,7 @@ func makeIngressWithPaths(host string, tls bool, class *string, annotations map[
 }
 
 func TestIngress_URL(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name string
 		in   metav1.Object
@@ -85,6 +86,7 @@ func TestIngress_URL(t *testing.T) {
 	}
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			if got := (Ingress{}).URL(tt.in); got != tt.want {
 				t.Errorf("URL() = %q, want %q", got, tt.want)
 			}
@@ -93,9 +95,9 @@ func TestIngress_URL(t *testing.T) {
 }
 
 func TestIngress_Matches(t *testing.T) {
+	t.Parallel()
 	nginx := "nginx"
 	cfg := &config.Config{
-		AutoIngress:        false,
 		EnabledAnnotation:  config.DefaultEnabledAnnotation,
 		TemplateAnnotation: config.DefaultTemplateAnnotation,
 	}
@@ -109,7 +111,7 @@ func TestIngress_Matches(t *testing.T) {
 		{
 			name: "auto-mode allows anything",
 			obj:  makeIngress("x", false, nil, nil),
-			cfg:  &config.Config{AutoIngress: true, EnabledAnnotation: cfg.EnabledAnnotation, TemplateAnnotation: cfg.TemplateAnnotation},
+			cfg:  &config.Config{Kinds: autoEnabled(config.KindIngress), EnabledAnnotation: cfg.EnabledAnnotation, TemplateAnnotation: cfg.TemplateAnnotation},
 			want: true,
 		},
 		{
@@ -127,25 +129,25 @@ func TestIngress_Matches(t *testing.T) {
 		{
 			name: "ingress class mismatch rejects",
 			obj:  makeIngress("x", false, &nginx, map[string]string{cfg.EnabledAnnotation: "true"}),
-			cfg:  &config.Config{AutoIngress: true, IngressClasses: config.StringSet{"traefik"}},
+			cfg:  &config.Config{Kinds: autoEnabled(config.KindIngress), IngressClasses: config.StringSet{"traefik"}},
 			want: false,
 		},
 		{
 			name: "ingress class match accepts",
 			obj:  makeIngress("x", false, &nginx, nil),
-			cfg:  &config.Config{AutoIngress: true, IngressClasses: config.StringSet{"nginx"}},
+			cfg:  &config.Config{Kinds: autoEnabled(config.KindIngress), IngressClasses: config.StringSet{"nginx"}},
 			want: true,
 		},
 		{
 			name: "matches any of multiple ingress classes",
 			obj:  makeIngress("x", false, &nginx, nil),
-			cfg:  &config.Config{AutoIngress: true, IngressClasses: config.StringSet{"traefik", "nginx", "haproxy"}},
+			cfg:  &config.Config{Kinds: autoEnabled(config.KindIngress), IngressClasses: config.StringSet{"traefik", "nginx", "haproxy"}},
 			want: true,
 		},
 		{
 			name: "rejects when none of multiple ingress classes match",
 			obj:  makeIngress("x", false, &nginx, nil),
-			cfg:  &config.Config{AutoIngress: true, IngressClasses: config.StringSet{"traefik", "haproxy"}},
+			cfg:  &config.Config{Kinds: autoEnabled(config.KindIngress), IngressClasses: config.StringSet{"traefik", "haproxy"}},
 			want: false,
 		},
 		{
@@ -157,6 +159,7 @@ func TestIngress_Matches(t *testing.T) {
 	}
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			if got := (Ingress{}).Matches(tt.obj, tt.cfg); got != tt.want {
 				t.Errorf("Matches() = %v, want %v", got, tt.want)
 			}
@@ -165,6 +168,7 @@ func TestIngress_Matches(t *testing.T) {
 }
 
 func TestIngress_DefaultConditions(t *testing.T) {
+	t.Parallel()
 	got := (Ingress{}).DefaultConditions()
 	if len(got) != 1 || got[0] != "[STATUS] == 200" {
 		t.Errorf("DefaultConditions() = %v", got)
@@ -172,6 +176,7 @@ func TestIngress_DefaultConditions(t *testing.T) {
 }
 
 func TestIngress_GuardHost(t *testing.T) {
+	t.Parallel()
 	if got := (Ingress{}).GuardHost(makeIngress("host.example.com", false, nil, nil)); got != "host.example.com" {
 		t.Errorf("GuardHost() = %q", got)
 	}
@@ -181,6 +186,7 @@ func TestIngress_GuardHost(t *testing.T) {
 }
 
 func TestIngressClassOf(t *testing.T) {
+	t.Parallel()
 	nginx := "nginx"
 	cases := []struct {
 		name string
@@ -198,6 +204,7 @@ func TestIngressClassOf(t *testing.T) {
 	}
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			if got := ingressClassOf(tt.ing); got != tt.want {
 				t.Errorf("ingressClassOf() = %q, want %q", got, tt.want)
 			}
@@ -206,6 +213,7 @@ func TestIngressClassOf(t *testing.T) {
 }
 
 func TestIngress_ParentAnnotations(t *testing.T) {
+	t.Parallel()
 	scheme := runtime.NewScheme()
 	scheme.AddKnownTypeWithName(ingressClassGVR.GroupVersion().WithKind("IngressClass"), &unstructured.Unstructured{})
 	scheme.AddKnownTypeWithName(ingressClassGVR.GroupVersion().WithKind("IngressClassList"), &unstructured.UnstructuredList{})
@@ -229,6 +237,7 @@ func TestIngress_ParentAnnotations(t *testing.T) {
 }
 
 func TestIngress_ParentAnnotations_Missing(t *testing.T) {
+	t.Parallel()
 	scheme := runtime.NewScheme()
 	client := fake.NewSimpleDynamicClient(scheme)
 	ing := makeIngress("x", false, nil, nil)

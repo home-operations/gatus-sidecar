@@ -6,6 +6,7 @@ import (
 )
 
 func TestEndpoint_ApplyTemplate(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		in   *Endpoint
@@ -81,6 +82,7 @@ func TestEndpoint_ApplyTemplate(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			tt.in.ApplyTemplate(tt.tmpl)
 			if !reflect.DeepEqual(tt.in, tt.want) {
 				t.Errorf("ApplyTemplate mismatch\n got=%+v\nwant=%+v", tt.in, tt.want)
@@ -90,6 +92,7 @@ func TestEndpoint_ApplyTemplate(t *testing.T) {
 }
 
 func TestToStringSlice_DropsNonStringElements(t *testing.T) {
+	t.Parallel()
 	got := toStringSlice([]any{"a", 1, "b"})
 	want := []string{"a", "b"}
 	if !reflect.DeepEqual(got, want) {
@@ -98,6 +101,7 @@ func TestToStringSlice_DropsNonStringElements(t *testing.T) {
 }
 
 func TestToStringSlice_NilForUnknown(t *testing.T) {
+	t.Parallel()
 	if got := toStringSlice(12345); got != nil {
 		t.Errorf("toStringSlice(12345) = %v, want nil", got)
 	}

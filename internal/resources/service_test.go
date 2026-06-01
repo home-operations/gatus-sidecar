@@ -20,6 +20,7 @@ func makeService(name, ns string, port int32, protocol corev1.Protocol) *corev1.
 }
 
 func TestService_URL(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name string
 		svc  metav1.Object
@@ -36,6 +37,7 @@ func TestService_URL(t *testing.T) {
 	}
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			if got := (Service{}).URL(tt.svc); got != tt.want {
 				t.Errorf("URL() = %q, want %q", got, tt.want)
 			}
@@ -44,11 +46,12 @@ func TestService_URL(t *testing.T) {
 }
 
 func TestService_DefaultConditionsAndMatches(t *testing.T) {
+	t.Parallel()
 	if got := (Service{}).DefaultConditions(); len(got) != 1 || got[0] != "[CONNECTED] == true" {
 		t.Errorf("DefaultConditions() = %v", got)
 	}
 
-	if !(Service{}).Matches(makeService("a", "n", 80, corev1.ProtocolTCP), &config.Config{AutoService: true}) {
+	if !(Service{}).Matches(makeService("a", "n", 80, corev1.ProtocolTCP), &config.Config{Kinds: autoEnabled(config.KindService)}) {
 		t.Error("auto mode should match")
 	}
 	if (Service{}).Matches(makeService("a", "n", 80, corev1.ProtocolTCP), &config.Config{EnabledAnnotation: "x", TemplateAnnotation: "y"}) {
@@ -57,6 +60,7 @@ func TestService_DefaultConditionsAndMatches(t *testing.T) {
 }
 
 func TestService_GuardHostAndParentAnnotations_NoOps(t *testing.T) {
+	t.Parallel()
 	if got := (Service{}).GuardHost(makeService("a", "n", 80, corev1.ProtocolTCP)); got != "" {
 		t.Errorf("GuardHost() = %q, want \"\"", got)
 	}

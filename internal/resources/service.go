@@ -25,7 +25,7 @@ type Service struct{}
 
 func (Service) GVR() schema.GroupVersionResource { return serviceGVR }
 
-func (Service) Prefix(cfg *config.Config) string { return cfg.ServicePrefix }
+func (Service) Prefix(cfg *config.Config) string { return cfg.Prefix(config.KindService) }
 
 func (Service) Convert(u *unstructured.Unstructured) (metav1.Object, error) {
 	return convertTo[corev1.Service](u)
@@ -35,7 +35,7 @@ func (Service) Matches(obj metav1.Object, cfg *config.Config) bool {
 	if _, ok := obj.(*corev1.Service); !ok {
 		return false
 	}
-	return matchesAnnotation(obj, cfg.AutoService, cfg)
+	return matchesAnnotation(obj, cfg.AutoEnabled(config.KindService), cfg)
 }
 
 func (Service) URL(obj metav1.Object) string {

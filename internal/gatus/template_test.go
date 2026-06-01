@@ -6,6 +6,7 @@ import (
 )
 
 func TestParseTemplate(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name    string
 		in      string
@@ -18,6 +19,7 @@ func TestParseTemplate(t *testing.T) {
 	}
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			got, err := ParseTemplate(tt.in)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("ParseTemplate err=%v wantErr=%v", err, tt.wantErr)
@@ -30,6 +32,7 @@ func TestParseTemplate(t *testing.T) {
 }
 
 func TestMergeTemplates(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name          string
 		parent, child map[string]any
@@ -68,6 +71,7 @@ func TestMergeTemplates(t *testing.T) {
 	}
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			got := MergeTemplates(tt.parent, tt.child)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("got=%v want=%v", got, tt.want)
@@ -77,6 +81,7 @@ func TestMergeTemplates(t *testing.T) {
 }
 
 func TestIsGuarded(t *testing.T) {
+	t.Parallel()
 	if IsGuarded(nil) {
 		t.Error("nil data should not be guarded")
 	}
@@ -89,6 +94,7 @@ func TestIsGuarded(t *testing.T) {
 }
 
 func TestPathOverride(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name   string
 		data   map[string]any
@@ -103,6 +109,7 @@ func TestPathOverride(t *testing.T) {
 	}
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			got, ok := PathOverride(tt.data)
 			if got != tt.want || ok != tt.wantOK {
 				t.Errorf("PathOverride() = (%q, %v), want (%q, %v)", got, ok, tt.want, tt.wantOK)

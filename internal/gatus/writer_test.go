@@ -11,6 +11,7 @@ import (
 )
 
 func TestWriter_UpsertAndDelete(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "out.yaml")
 	w := NewWriter(path)
@@ -58,6 +59,7 @@ func TestWriter_UpsertAndDelete(t *testing.T) {
 }
 
 func TestWriter_Flush_SortsAndMatchesYAMLShape(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "out.yaml")
 	w := NewWriter(path)
@@ -101,6 +103,7 @@ func TestWriter_Flush_SortsAndMatchesYAMLShape(t *testing.T) {
 }
 
 func TestWriter_FlushIsAtomic(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "out.yaml")
 	w := NewWriter(path)
@@ -120,6 +123,7 @@ func TestWriter_FlushIsAtomic(t *testing.T) {
 }
 
 func TestWriter_Concurrent(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "out.yaml")
 	w := NewWriter(path)
@@ -138,6 +142,7 @@ func TestWriter_Concurrent(t *testing.T) {
 }
 
 func TestWriter_CreatesDirectories(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "nested", "out.yaml")
 	w := NewWriter(path)

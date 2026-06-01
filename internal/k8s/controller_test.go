@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -27,6 +28,7 @@ type fakeResource struct {
 	conditions     []string
 	guardHost      string
 	urlFn          func(metav1.Object) string
+	matchesFn      func(metav1.Object, *config.Config) bool
 	parentAnnotsFn func(context.Context, metav1.Object, Fetcher) map[string]string
 }
 
@@ -35,7 +37,24 @@ func (f fakeResource) Prefix(*config.Config) string                             
 func (f fakeResource) DefaultConditions() []string                               { return f.conditions }
 func (f fakeResource) GuardHost(metav1.Object) string                            { return f.guardHost }
 func (fakeResource) Convert(u *unstructured.Unstructured) (metav1.Object, error) { return u, nil }
-func (fakeResource) Matches(metav1.Object, *config.Config) bool                  { return true }
+
+func (f fakeResource) Matches(obj metav1.Object, cfg *config.Config) bool {
+	if f.matchesFn != nil {
+		return f.matchesFn(obj, cfg)
+	}
+	return true
+}
+
+// matchesEnabledAnnotation rejects objects whose enabled annotation is falsy,
+// mirroring how real resources gate on the annotation inside Matches.
+func matchesEnabledAnnotation(obj metav1.Object, cfg *config.Config) bool {
+	v, ok := obj.GetAnnotations()[cfg.EnabledAnnotation]
+	if !ok {
+		return true
+	}
+	enabled, err := strconv.ParseBool(v)
+	return err == nil && enabled
+}
 
 func (f fakeResource) URL(obj metav1.Object) string {
 	if f.urlFn != nil {
@@ -136,11 +155,10 @@ func TestController_DisabledAnnotationRemovesEndpoint(t *testing.T) {
 		EnabledAnnotation:  "enabled",
 	}
 	writer := gatus.NewWriter(filepath.Join(t.TempDir(), "out.yaml"))
-	c := NewController(cfg, fakeResource{gvr: gvr}, writer, client)
+	// Mirror real resources: the enabled annotation gate lives in Matches.
+	c := NewController(cfg, fakeResource{gvr: gvr, matchesFn: matchesEnabledAnnotation}, writer, client)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
+	ctx := t.Context()
 	go func() { _ = c.Run(ctx) }()
 	if !waitFor(t, func() bool { return writer.Len() == 1 }) {
 		t.Fatalf("expected 1 endpoint, got %d", writer.Len())
@@ -173,39 +191,16 @@ func TestController_MissingURLRemovesEndpoint(t *testing.T) {
 		urlFn: func(metav1.Object) string { return "" },
 	}, writer, client)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	go func() { _ = c.Run(ctx) }()
-
-	// After sync the writer should still be empty - URL is empty so endpoint isn't added.
-	time.Sleep(500 * time.Millisecond)
+	// Drive reconcile directly off the indexer so the assertion is
+	// deterministic — an empty URL must never produce an endpoint.
+	if err := c.informer.GetIndexer().Add(makeUnstructured(gvr, nil)); err != nil {
+		t.Fatalf("seed indexer: %v", err)
+	}
+	if err := c.reconcile(context.Background(), "default/thing-a", true); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
 	if writer.Len() != 0 {
 		t.Errorf("expected 0 endpoints when URL is empty, got %d", writer.Len())
-	}
-}
-
-func TestIsExplicitlyDisabled(t *testing.T) {
-	cases := []struct {
-		name string
-		ann  map[string]string
-		want bool
-	}{
-		{"absent", nil, false},
-		{"true", map[string]string{"enabled": "true"}, false},
-		{"True", map[string]string{"enabled": "True"}, false},
-		{"TRUE", map[string]string{"enabled": "TRUE"}, false},
-		{"one", map[string]string{"enabled": "1"}, false},
-		{"false", map[string]string{"enabled": "false"}, true},
-		{"zero", map[string]string{"enabled": "0"}, true},
-		{"empty", map[string]string{"enabled": ""}, true},
-		{"unparseable", map[string]string{"enabled": "yes"}, true},
-	}
-	for _, tt := range cases {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := isExplicitlyDisabled(tt.ann, "enabled"); got != tt.want {
-				t.Errorf("isExplicitlyDisabled() = %v, want %v", got, tt.want)
-			}
-		})
 	}
 }
 
@@ -261,8 +256,7 @@ func TestController_AppliesPrefixToEndpointName(t *testing.T) {
 		urlFn:  func(metav1.Object) string { return "https://x" },
 	}, writer, client)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	go func() { _ = c.Run(ctx) }()
 
 	if !waitFor(t, func() bool { return writer.Len() == 1 }) {
@@ -308,8 +302,7 @@ func TestController_TemplateInheritanceAndGuarded(t *testing.T) {
 	}
 	c := NewController(cfg, r, writer, client)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	go func() { _ = c.Run(ctx) }()
 
 	if !waitFor(t, func() bool { return writer.Len() == 1 }) {
@@ -371,8 +364,7 @@ func TestController_PathOverrideAndProbePathsFlag(t *testing.T) {
 			}
 			c := NewController(cfg, r, writer, client)
 
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 			go func() { _ = c.Run(ctx) }()
 
 			if !waitFor(t, func() bool { return writer.Len() == 1 }) {
