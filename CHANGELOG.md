@@ -53,6 +53,27 @@
   documented annotation behavior, URL-derivation rules, and the new prefix /
   multi-value-filter / log-level flags.
 
+## [0.0.20](https://github.com/home-operations/gatus-sidecar/compare/0.0.19...0.0.20) (2026-06-06)
+
+
+### Features
+
+* add build version ([#73](https://github.com/home-operations/gatus-sidecar/issues/73)) ([fdff804](https://github.com/home-operations/gatus-sidecar/commit/fdff804284706302cfa3ce52642b2baa109d7557))
+* **mise:** update tool oxfmt (0.52.0 → 0.53.0) ([5d8d78a](https://github.com/home-operations/gatus-sidecar/commit/5d8d78ae5e95327f3205b5f7cf4beb93d6263e61))
+
+
+### Bug Fixes
+
+* **mise:** update tool go (1.26.3 → 1.26.4) ([c9552f7](https://github.com/home-operations/gatus-sidecar/commit/c9552f7632e3afcb0b307a793a33a6b966ea17a4))
+
+
+### Miscellaneous Chores
+
+* move mise to mise folder ([405fb5c](https://github.com/home-operations/gatus-sidecar/commit/405fb5c3c74bc328d147fcb4d1cdb09c2e282eeb))
+* remove 'Contents' section from README ([ba7f15a](https://github.com/home-operations/gatus-sidecar/commit/ba7f15a1faa5995ac67ee3d0e780e8efd72faae4))
+* update mise lockfile ([fb9f3c8](https://github.com/home-operations/gatus-sidecar/commit/fb9f3c82f6da66dd0ddf1a9b12bb4e4d272a744b))
+* update rlspls workflow name ([4585d37](https://github.com/home-operations/gatus-sidecar/commit/4585d3749682c2b21358b0390e3ca987647e2502))
+
 ## [0.0.19](https://github.com/home-operations/gatus-sidecar/compare/0.0.18...0.0.19) (2026-06-01)
 
 
