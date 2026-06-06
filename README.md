@@ -10,25 +10,6 @@
 
 ---
 
-## Contents
-
-- [Why](#why)
-- [Resource support](#resource-support)
-- [Quick start](#quick-start)
-- [Deployment](#deployment)
-- [Configuration](#configuration)
-    - [Flag reference](#flag-reference)
-    - [Annotations](#annotations)
-    - [Template merging](#template-merging)
-    - [URL derivation](#url-derivation)
-    - [Guarded probes](#guarded-probes)
-- [Examples](#examples)
-- [Development](#development)
-- [Architecture](#architecture)
-- [License](#license)
-
----
-
 ## Why
 
 Maintaining a Gatus config by hand stops scaling once you have more than a handful of services. This sidecar watches the cluster, derives an endpoint per resource, and writes a YAML file Gatus hot-reloads — no restarts, no template hell, no drift.
