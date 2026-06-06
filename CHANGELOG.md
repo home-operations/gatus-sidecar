@@ -53,7 +53,7 @@
   documented annotation behavior, URL-derivation rules, and the new prefix /
   multi-value-filter / log-level flags.
 
-## [0.0.20](https://github.com/home-operations/gatus-sidecar/compare/0.0.19...0.0.20) (2026-06-06)
+## [0.1.0](https://github.com/home-operations/gatus-sidecar/compare/0.0.19...0.1.0) (2026-06-06)
 
 
 ### Features
