@@ -53,6 +53,23 @@
   documented annotation behavior, URL-derivation rules, and the new prefix /
   multi-value-filter / log-level flags.
 
+## [0.2.1](https://github.com/home-operations/gatus-sidecar/compare/0.2.0...0.2.1) (2026-06-12)
+
+
+### Features
+
+* **chart:** add gatus-sidecar chart bundling Gatus + the sidecar ([#79](https://github.com/home-operations/gatus-sidecar/issues/79)) ([b763322](https://github.com/home-operations/gatus-sidecar/commit/b7633229a8b3f6a5684932bf767824a0d30bba88))
+
+
+### Bug Fixes
+
+* **deps:** update kubernetes monorepo (v0.36.1 → v0.36.2) ([#80](https://github.com/home-operations/gatus-sidecar/issues/80)) ([c9f1bde](https://github.com/home-operations/gatus-sidecar/commit/c9f1bde6429e215be847f9ca1c4b53eee804a930))
+
+
+### Miscellaneous Chores
+
+* **mise:** update tool helm (4.2.0 → 4.2.1) ([#82](https://github.com/home-operations/gatus-sidecar/issues/82)) ([e7aa33f](https://github.com/home-operations/gatus-sidecar/commit/e7aa33f5ee4358b94ec07542751886d666fd9833))
+
 ## [0.2.0](https://github.com/home-operations/gatus-sidecar/compare/0.1.0...0.2.0) (2026-06-12)
 
 
