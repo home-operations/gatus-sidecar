@@ -1,0 +1,27 @@
+---
+apiVersion: v2
+name: gatus-sidecar
+description: Deploy Gatus with the home-operations gatus-sidecar for automatic endpoint discovery
+type: application
+# Native sidecars (restartPolicy: Always init containers) are stable from 1.29,
+# and the Gateway API v1 HTTPRoute is GA there too.
+kubeVersion: ">=1.29.0-0"
+# version + appVersion are overridden at package time: version from the release
+# tag (the gatus-sidecar repo's own version), appVersion from the pinned gatus
+# image tag.
+version: 0.0.0
+appVersion: "0.0.0"
+home: https://github.com/home-operations/gatus-sidecar
+sources:
+  - https://github.com/home-operations/gatus-sidecar
+maintainers:
+  - name: home-operations
+    email: contact@home-operations.com
+keywords:
+  - gatus
+  - monitoring
+  - status-page
+  - healthcheck
+  - kubernetes
+annotations:
+  category: Monitoring

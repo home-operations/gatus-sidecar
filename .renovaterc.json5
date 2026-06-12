@@ -2,6 +2,18 @@
   $schema: "https://docs.renovatebot.com/renovate-schema.json",
   extends: ["local>home-operations/renovate-config"],
   postUpdateOptions: ["gomodTidy", "gomodUpdateImportPaths"],
+  // Regenerate the chart's committed docs after an upgrade so a value bump (e.g.
+  // the gatus image tag) doesn't leave README.md / values.schema.json stale and
+  // fail generate-check. Runs the helm-docs + helm-schema binaries shipped in the
+  // Renovate container (mirrors the chart-doc half of `mise run generate`).
+  postUpgradeTasks: {
+    commands: [
+      "helm-docs --chart-search-root=charts --log-level=warn",
+      "helm-schema --chart-search-root charts/gatus-sidecar --skip-auto-generation required,additionalProperties --append-newline",
+    ],
+    fileFilters: ["charts/gatus-sidecar/README.md", "charts/gatus-sidecar/values.schema.json"],
+    executionMode: "branch",
+  },
   packageRules: [
     {
       description: "Go Toolchain Group",
@@ -10,6 +22,14 @@
       matchFileNames: [".mise/config.toml", "go.mod"],
       groupName: "Go toolchain",
       groupSlug: "go-toolchain",
+    },
+    {
+      // The sidecar image is this repo's own artifact: the release pipeline pins
+      // its digest into the chart at publish time, so Renovate must not bump it
+      // here. Only the upstream gatus image is Renovate-managed.
+      description: "Sidecar image is pinned by CI, not Renovate",
+      matchDepNames: ["ghcr.io/home-operations/gatus-sidecar"],
+      enabled: false,
     },
   ],
 }

@@ -1,0 +1,136 @@
+suite: rbac
+templates:
+  - rbac.tpl
+  - _helpers.tpl
+tests:
+  - it: renders a ClusterRole and ClusterRoleBinding by default
+    template: rbac.tpl
+    asserts:
+      - hasDocuments:
+          count: 2
+      - documentIndex: 0
+        isKind:
+          of: ClusterRole
+      - documentIndex: 1
+        isKind:
+          of: ClusterRoleBinding
+      - documentIndex: 1
+        equal:
+          path: roleRef.kind
+          value: ClusterRole
+      - documentIndex: 1
+        contains:
+          path: subjects
+          content:
+            kind: ServiceAccount
+            name: RELEASE-NAME-gatus-sidecar
+            namespace: NAMESPACE
+
+  - it: derives rules from the enabled kinds (service + httproute by default)
+    template: rbac.tpl
+    documentIndex: 0
+    asserts:
+      # service.enable is on by default.
+      - contains:
+          path: rules
+          content:
+            apiGroups: [""]
+            resources: [services]
+            verbs: [get, list, watch]
+      # httproute.auto is on by default.
+      - contains:
+          path: rules
+          content:
+            apiGroups: [gateway.networking.k8s.io]
+            resources: [httproutes, gateways]
+            verbs: [get, list, watch]
+      # ingress and ingressroute are off by default → no rules for them.
+      - notContains:
+          path: rules
+          content:
+            apiGroups: [networking.k8s.io]
+            resources: [ingresses, ingressclasses]
+            verbs: [get, list, watch]
+      - notContains:
+          path: rules
+          content:
+            apiGroups: [traefik.io]
+            resources: [ingressroutes]
+            verbs: [get, list, watch]
+
+  - it: adds the ingress rule when an ingress kind is enabled
+    template: rbac.tpl
+    documentIndex: 0
+    set:
+      sidecar.kinds.ingress.auto: true
+    asserts:
+      - contains:
+          path: rules
+          content:
+            apiGroups: [networking.k8s.io]
+            resources: [ingresses, ingressclasses]
+            verbs: [get, list, watch]
+
+  - it: adds the ingressroute rule when the ingressroute kind is enabled
+    template: rbac.tpl
+    documentIndex: 0
+    set:
+      sidecar.kinds.ingressroute.enable: true
+    asserts:
+      - contains:
+          path: rules
+          content:
+            apiGroups: [traefik.io]
+            resources: [ingressroutes]
+            verbs: [get, list, watch]
+
+  - it: appends rbac.extraRules to the derived rules
+    template: rbac.tpl
+    documentIndex: 0
+    set:
+      rbac.extraRules:
+        - apiGroups: [""]
+          resources: [secrets]
+          verbs: [get, list, watch]
+    asserts:
+      - contains:
+          path: rules
+          content:
+            apiGroups: [""]
+            resources: [secrets]
+            verbs: [get, list, watch]
+
+  - it: renders an empty rules list when no kind is enabled and no extra rules are set
+    template: rbac.tpl
+    documentIndex: 0
+    set:
+      sidecar.kinds.service.enable: false
+      sidecar.kinds.httproute.auto: false
+    asserts:
+      - equal:
+          path: rules
+          value: []
+
+  - it: renders a namespaced Role and RoleBinding when rbac.type is Role
+    template: rbac.tpl
+    set:
+      rbac.type: Role
+    asserts:
+      - documentIndex: 0
+        isKind:
+          of: Role
+      - documentIndex: 0
+        equal:
+          path: metadata.namespace
+          value: NAMESPACE
+      - documentIndex: 1
+        isKind:
+          of: RoleBinding
+
+  - it: renders nothing when rbac.create is false
+    template: rbac.tpl
+    set:
+      rbac.create: false
+    asserts:
+      - hasDocuments:
+          count: 0

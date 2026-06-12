@@ -1,0 +1,22 @@
+---
+# Minimal gatus config for the Helm E2E (kind) job: in-memory storage (no PVC),
+# the web port the chart's Service/probes target, and one trivial endpoint so
+# gatus has something to evaluate. Applied as a ConfigMap; the chart mounts the
+# `config.yaml` key into gatus.configPath via config.existingConfigMap +
+# config.items. The sidecar writes gatus-sidecar.yaml alongside it.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gatus-e2e-config
+data:
+  config.yaml: |
+    storage:
+      type: memory
+    web:
+      port: ${GATUS_WEB_PORT}
+    endpoints:
+      - name: self
+        url: "http://localhost:${GATUS_WEB_PORT}/health"
+        interval: 30s
+        conditions:
+          - "[STATUS] == 200"

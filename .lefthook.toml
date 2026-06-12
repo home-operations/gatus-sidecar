@@ -2,3 +2,23 @@
 git_url = "https://github.com/home-operations/.github"
 ref = "main"
 configs = ["lefthook.common.toml"]
+
+# Regenerate the committed generated chart files (README, values schema) whenever
+# their sources change, and stage them, so they stay in sync within the commit.
+# CI's generate-check is the backstop.
+[pre-commit.commands.generate]
+glob = [
+  "charts/gatus-sidecar/Chart.yaml",
+  "charts/gatus-sidecar/values.yaml",
+  "charts/gatus-sidecar/README.md.gotmpl",
+]
+run = "mise run generate && git add charts/gatus-sidecar/README.md charts/gatus-sidecar/values.schema.json"
+
+# The generated chart README/schema are .prettierignore'd; exclude them from the
+# shared formatters too, so oxfmt isn't handed a file it then drops (it exits
+# non-zero when every input is ignored, which would block the commit).
+[pre-commit.commands.format-markdown]
+exclude = ["charts/gatus-sidecar/README.md"]
+
+[pre-commit.commands.format-json]
+exclude = ["charts/gatus-sidecar/values.schema.json"]

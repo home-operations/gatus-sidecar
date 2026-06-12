@@ -69,3 +69,64 @@ jobs:
         - registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+  helm:
+    name: Helm
+    needs: release
+    if: ${{ github.event_name == 'release' }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write # keyless Cosign signing of the published chart
+      packages: write
+    env:
+      VERSION: ${{ github.event.release.tag_name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - name: Setup Mise
+        uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925 # v4.1.0
+        with:
+          cache: false # publishing job — avoid restoring a poisonable cache
+          experimental: true
+          install_args: --locked
+
+      # Pin the sidecar image to the exact digest the build just published, so the
+      # released chart references an immutable sidecar image (not a floating tag).
+      # The digest is the manifest-list (index) digest from docker/github-builder;
+      # fail closed rather than ship a chart that silently falls back to the tag.
+      - name: Pin the released sidecar image digest into the chart
+        env:
+          DIGEST: ${{ needs.release.outputs.digest }}
+        run: |
+          [ -n "${DIGEST}" ] || { echo "build produced no digest"; exit 1; }
+          yq -i '.sidecar.image.digest = strenv(DIGEST)' charts/gatus-sidecar/values.yaml
+
+      # The chart version is the release tag (the sidecar's own version); the chart
+      # appVersion is the upstream gatus image tag pinned in values.yaml (Renovate
+      # owns that bump).
+      - name: Package Helm chart
+        run: |
+          GATUS_TAG="$(yq '.gatus.image.tag' charts/gatus-sidecar/values.yaml)"
+          [ -n "${GATUS_TAG}" ] && [ "${GATUS_TAG}" != "null" ] || { echo "gatus.image.tag is unset; Renovate should pin it"; exit 1; }
+          helm package charts/gatus-sidecar \
+            --version "${VERSION}" \
+            --app-version "${GATUS_TAG}"
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish Helm chart to GHCR (OCI)
+        run: |-
+          helm push "gatus-sidecar-${VERSION}.tgz" "oci://ghcr.io/${{ github.repository_owner }}/charts"
+
+      - name: Sign the published chart with Cosign
+        run: |-
+          cosign sign --yes "ghcr.io/${{ github.repository_owner }}/charts/gatus-sidecar:${VERSION}"
