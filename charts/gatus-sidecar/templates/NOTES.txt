@@ -1,0 +1,27 @@
+Gatus is running with the home-operations gatus-sidecar{{ if .Values.sidecar.enabled }} as a native sidecar{{ end }}.
+
+{{ if .Values.sidecar.enabled -}}
+The sidecar watches the cluster and writes discovered endpoints into the shared
+config volume; gatus picks them up automatically. The sidecar's flags are:
+{{- include "gatus-sidecar.sidecarArgs" . | nindent 2 }}
+{{ end -}}
+
+Open the status page:
+
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "gatus-sidecar.fullname" . }} {{ .Values.service.port }}:{{ .Values.service.port }}
+  # then browse http://localhost:{{ .Values.service.port }}
+
+{{ if .Values.ingress.enabled -}}
+Or via ingress:
+{{- range .Values.ingress.hosts }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ .host }}
+{{- end }}
+{{ end -}}
+
+{{- if not .Values.config.existingConfigMap }}
+
+WARNING: config.existingConfigMap is not set. This chart does NOT render gatus
+config — you must supply a ConfigMap holding your gatus config files and point
+`config.existingConfigMap` at it, then list its keys under `config.items` to
+mount them into {{ .Values.gatus.configPath }}.
+{{- end }}

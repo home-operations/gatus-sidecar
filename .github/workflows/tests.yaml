@@ -22,6 +22,10 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  # renovate: datasource=github-releases depName=helm-unittest/helm-unittest
+  HELM_UNITTEST_VERSION: "v1.1.1"
+
 jobs:
   test:
     name: Go Tests
@@ -45,5 +49,30 @@ jobs:
           go mod tidy
           git diff --exit-code go.mod go.sum
 
+      - name: Check generated files are current
+        run: mise run generate-check
+
       - name: Run unit tests
         run: mise run test
+
+  helm-unittest:
+    name: Helm Unit Tests
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - name: Setup Mise
+        uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925 # v4.1.0
+        with:
+          experimental: true
+          install_args: --locked
+
+      - name: Run helm unit tests
+        run: |-
+          helm plugin install https://github.com/helm-unittest/helm-unittest --version "${HELM_UNITTEST_VERSION}" --verify=false
+          mise run helm-unittest

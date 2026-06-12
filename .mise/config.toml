@@ -1,9 +1,14 @@
 [tools]
 go = "1.26.4"
 golangci-lint = "2.12.2"
+helm = "4.2.0"
+cosign = "3.1.1"
+"aqua:dadav/helm-schema" = "0.23.4"
 lefthook = "2.1.9"
 oxfmt = "0.54.0"
 zizmor = "1.25.2"
+helm-docs = "1.14.2"
+yq = "4.53.3"
 
 [tasks.fmt]
 description = "Run go fmt against code"
@@ -17,6 +22,23 @@ run = "go vet ./..."
 description = "Run tests with coverage"
 run = "go test -race $(go list ./...) -coverprofile cover.out"
 
+[tasks.generate]
+description = "Regenerate committed generated files (chart README, values schema)"
+run = """
+helm-docs --chart-search-root=charts --log-level=warn
+# values.schema.json from values.yaml. required/additionalProperties are skipped:
+# values.yaml provides every default (so nothing is user-required), and the free-form
+# maps (annotations, gatus.env, …) must stay open. --append-newline gives a clean EOF.
+helm-schema --chart-search-root charts/gatus-sidecar --skip-auto-generation required,additionalProperties --append-newline
+"""
+
+[tasks.generate-check]
+description = "Fail if the committed generated files are stale (CI gate)"
+run = """
+mise run generate
+git diff --exit-code charts/gatus-sidecar/README.md charts/gatus-sidecar/values.schema.json
+"""
+
 [tasks.lint]
 description = "Run golangci-lint"
 run = "golangci-lint run"
@@ -24,6 +46,45 @@ run = "golangci-lint run"
 [tasks.lint-fix]
 description = "Run golangci-lint with --fix"
 run = "golangci-lint run --fix"
+
+[tasks.helm-lint]
+description = "Lint the Helm chart"
+run = "helm lint charts/gatus-sidecar"
+
+[tasks.helm-unittest]
+description = "Run helm-unittest template tests (needs the helm-unittest plugin)"
+run = "helm unittest charts/gatus-sidecar"
+
+[tasks.helm-test]
+description = "Install the chart into the current cluster (e.g. a kind context) and run `helm test`"
+# The e2e workflow builds the PR's sidecar image, kind-loads it, and sets
+# GATUS_TEST_IMAGE_TAG=e2e + pull policy Never so the test runs the code under
+# review; locally these default to the published `latest` for a quick chart
+# check. The sidecar is configured service-only (httproute auto off, service
+# auto on) so kind needs no Gateway API CRDs, and gatus runs in-memory
+# (persistence off) from the ci/test-config.yaml ConfigMap. Export KUBECONFIG to
+# the kind context first (kind-action writes ~/.kube/config but does not export
+# the env var). The trap cleans up.
+run = """
+trap 'helm uninstall gatus-e2e -n gatus-e2e --wait >/dev/null 2>&1 || true; kubectl delete -f charts/gatus-sidecar/ci/test-config.yaml -n gatus-e2e --ignore-not-found >/dev/null 2>&1 || true' EXIT
+set -e
+kubectl create namespace gatus-e2e --dry-run=client -o yaml | kubectl apply -f -
+kubectl apply -f charts/gatus-sidecar/ci/test-config.yaml -n gatus-e2e
+helm install gatus-e2e charts/gatus-sidecar -n gatus-e2e --create-namespace --wait --timeout 5m \
+  --set sidecar.image.tag="${GATUS_TEST_IMAGE_TAG:-latest}" \
+  --set sidecar.image.pullPolicy="${GATUS_TEST_PULL_POLICY:-IfNotPresent}" \
+  --set sidecar.kinds.httproute.auto=false \
+  --set sidecar.kinds.service.auto=true \
+  --set gatus.image.tag=v5.36.0 \
+  --set config.existingConfigMap=gatus-e2e-config \
+  --set config.items[0].key=config.yaml \
+  --set config.items[0].path=config.yaml
+helm test gatus-e2e -n gatus-e2e --logs
+"""
+
+[tasks.helm-template]
+description = "Render the Helm chart with default values"
+run = "helm template gatus charts/gatus-sidecar"
 
 [hooks]
 postinstall = "lefthook install"

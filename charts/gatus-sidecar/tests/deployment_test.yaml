@@ -1,0 +1,356 @@
+suite: deployment
+templates:
+  - deployment.tpl
+  - _helpers.tpl
+# config.existingConfigMap is required (the chart never renders config); provide
+# one for the whole suite. Individual tests override it where relevant.
+set:
+  config.existingConfigMap: gatus-config
+tests:
+  - it: is an apps/v1 Deployment
+    template: deployment.tpl
+    asserts:
+      - isKind:
+          of: Deployment
+      - equal:
+          path: apiVersion
+          value: apps/v1
+      - notExists:
+          path: spec.volumeClaimTemplates
+
+  - it: defaults the gatus image to repository:appVersion when no digest or tag is set
+    template: deployment.tpl
+    set:
+      gatus.image.tag: ""
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/twin/gatus:0.0.0
+
+  - it: prefers the gatus digest over the tag when set
+    template: deployment.tpl
+    set:
+      gatus.image.digest: sha256:deadbeef
+      gatus.image.tag: ignored
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/twin/gatus@sha256:deadbeef
+
+  - it: defaults the sidecar image to repository:Chart.Version
+    template: deployment.tpl
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].image
+          value: ghcr.io/home-operations/gatus-sidecar:0.0.0
+
+  - it: prefers the sidecar digest over the tag when set
+    template: deployment.tpl
+    set:
+      sidecar.image.digest: sha256:cafef00d
+      sidecar.image.tag: ignored
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].image
+          value: ghcr.io/home-operations/gatus-sidecar@sha256:cafef00d
+
+  - it: runs the sidecar as a native sidecar (initContainer with restartPolicy Always)
+    template: deployment.tpl
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: gatus-sidecar
+      - equal:
+          path: spec.template.spec.initContainers[0].restartPolicy
+          value: Always
+
+  - it: omits the sidecar initContainer when sidecar.enabled is false
+    template: deployment.tpl
+    set:
+      sidecar.enabled: false
+    asserts:
+      - notExists:
+          path: spec.template.spec.initContainers
+
+  - it: renders the default sidecar args from the structured config
+    template: deployment.tpl
+    asserts:
+      # service.enable + httproute.auto are the chart defaults.
+      - contains:
+          path: spec.template.spec.initContainers[0].args
+          content: --output=/config/gatus-sidecar.yaml
+      - contains:
+          path: spec.template.spec.initContainers[0].args
+          content: --default-interval=1m
+      - contains:
+          path: spec.template.spec.initContainers[0].args
+          content: --probe-paths=true
+      - contains:
+          path: spec.template.spec.initContainers[0].args
+          content: --log-level=info
+      - contains:
+          path: spec.template.spec.initContainers[0].args
+          content: --auto-httproute
+      - contains:
+          path: spec.template.spec.initContainers[0].args
+          content: --enable-service
+      # ingress is off by default, so neither its enable nor auto flag is emitted.
+      - notContains:
+          path: spec.template.spec.initContainers[0].args
+          content: --enable-ingress
+      - notContains:
+          path: spec.template.spec.initContainers[0].args
+          content: --auto-ingress
+      # auto-only kinds do not get a redundant --enable flag.
+      - notContains:
+          path: spec.template.spec.initContainers[0].args
+          content: --enable-httproute
+
+  - it: defaults --output into the configPath and honors an explicit output
+    template: deployment.tpl
+    set:
+      gatus.configPath: /data
+      sidecar.output: /tmp/out.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.initContainers[0].args
+          content: --output=/tmp/out.yaml
+
+  - it: emits namespace / annotation / gateway / ingress-class / prefix flags only when set
+    template: deployment.tpl
+    set:
+      sidecar.namespace: monitoring
+      sidecar.annotationConfig: example.com/config
+      sidecar.annotationEnabled: example.com/enabled
+      sidecar.gatewayNames: [gw-a, gw-b]
+      sidecar.ingressClasses: [internal]
+      sidecar.kinds.service.prefix: svc-
+      sidecar.extraArgs: ["--foo=bar"]
+    asserts:
+      - contains:
+          path: spec.template.spec.initContainers[0].args
+          content: --namespace=monitoring
+      - contains:
+          path: spec.template.spec.initContainers[0].args
+          content: --annotation-config=example.com/config
+      - contains:
+          path: spec.template.spec.initContainers[0].args
+          content: --annotation-enabled=example.com/enabled
+      - contains:
+          path: spec.template.spec.initContainers[0].args
+          content: --gateway-name=gw-a
+      - contains:
+          path: spec.template.spec.initContainers[0].args
+          content: --gateway-name=gw-b
+      - contains:
+          path: spec.template.spec.initContainers[0].args
+          content: --ingress-class=internal
+      - contains:
+          path: spec.template.spec.initContainers[0].args
+          content: --prefix-service=svc-
+      - contains:
+          path: spec.template.spec.initContainers[0].args
+          content: --foo=bar
+
+  - it: omits namespace / annotation flags by default
+    template: deployment.tpl
+    asserts:
+      - notContains:
+          path: spec.template.spec.initContainers[0].args
+          content: --namespace=
+      - notContains:
+          path: spec.template.spec.initContainers[0].args
+          content: --annotation-config=
+      - notContains:
+          path: spec.template.spec.initContainers[0].args
+          content: --annotation-enabled=
+
+  - it: automounts the ServiceAccount token by default
+    template: deployment.tpl
+    asserts:
+      - equal:
+          path: spec.template.spec.automountServiceAccountToken
+          value: true
+
+  - it: sets the gatus env vars in order (CONFIG_PATH, WEB_PORT, then LOG_LEVEL)
+    template: deployment.tpl
+    set:
+      gatus.configPath: /data
+      gatus.port: 9090
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].env[0]
+          value:
+            name: GATUS_CONFIG_PATH
+            value: /data
+      - equal:
+          path: spec.template.spec.containers[0].env[1]
+          value:
+            name: GATUS_WEB_PORT
+            value: "9090"
+      - equal:
+          path: spec.template.spec.containers[0].env[2]
+          value:
+            name: GATUS_LOG_LEVEL
+            value: INFO
+
+  - it: omits GATUS_LOG_LEVEL and GATUS_DELAY_START_SECONDS when empty, includes delay when set
+    template: deployment.tpl
+    set:
+      gatus.logLevel: ""
+      gatus.delayStartSeconds: "5"
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: GATUS_LOG_LEVEL
+            value: INFO
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: GATUS_DELAY_START_SECONDS
+            value: "5"
+
+  - it: targets the gatus port for the container port and probes
+    template: deployment.tpl
+    set:
+      gatus.port: 9090
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].ports[0].containerPort
+          value: 9090
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.httpGet.path
+          value: /health
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.httpGet.port
+          value: http
+
+  - it: renders gatus.env entries through tpl after the first-class env vars
+    template: deployment.tpl
+    set:
+      gatus.env:
+        RELEASE: "{{ .Release.Name }}"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RELEASE
+            value: RELEASE-NAME
+
+  - it: mounts the shared config volume on both containers at configPath
+    template: deployment.tpl
+    asserts:
+      - contains:
+          path: spec.template.spec.initContainers[0].volumeMounts
+          content:
+            name: config
+            mountPath: /config
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: config
+            mountPath: /config
+
+  - it: subPath-mounts each config item read-only from the config-files volume
+    template: deployment.tpl
+    set:
+      config.items:
+        - key: config.yaml
+          path: config.yaml
+        - key: buddy.yaml
+          path: buddy.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: config-files
+            mountPath: /config/config.yaml
+            subPath: config.yaml
+            readOnly: true
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: config-files
+            mountPath: /config/buddy.yaml
+            subPath: buddy.yaml
+            readOnly: true
+
+  - it: requires config.existingConfigMap (the config-files volume has no source otherwise)
+    template: deployment.tpl
+    set:
+      config.existingConfigMap: ""
+    asserts:
+      - failedTemplate:
+          errorMessage: "config.existingConfigMap is required: provide a ConfigMap with your gatus config files"
+
+  - it: uses an emptyDir config volume when persistence is disabled (default)
+    template: deployment.tpl
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: config
+            emptyDir: {}
+
+  - it: uses a persistentVolumeClaim config volume named after the release when persistence is enabled
+    template: deployment.tpl
+    set:
+      persistence.enabled: true
+    asserts:
+      - notContains:
+          path: spec.template.spec.volumes
+          content:
+            name: config
+            emptyDir: {}
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: config
+            persistentVolumeClaim:
+              claimName: RELEASE-NAME-gatus-sidecar
+
+  - it: uses the existingClaim for the config volume when set
+    template: deployment.tpl
+    set:
+      persistence.enabled: true
+      persistence.existingClaim: my-claim
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: config
+            persistentVolumeClaim:
+              claimName: my-claim
+
+  - it: defaults the grace period and omits priorityClassName / startupProbe
+    template: deployment.tpl
+    asserts:
+      - equal:
+          path: spec.template.spec.terminationGracePeriodSeconds
+          value: 30
+      - notExists:
+          path: spec.template.spec.priorityClassName
+      - notExists:
+          path: spec.template.spec.containers[0].startupProbe
+
+  - it: sets priorityClassName, grace, and a startup probe when configured
+    template: deployment.tpl
+    set:
+      priorityClassName: high-priority
+      terminationGracePeriodSeconds: 60
+      gatus.startupProbe:
+        httpGet:
+          path: /health
+          port: http
+        failureThreshold: 30
+    asserts:
+      - equal:
+          path: spec.template.spec.priorityClassName
+          value: high-priority
+      - equal:
+          path: spec.template.spec.terminationGracePeriodSeconds
+          value: 60
+      - equal:
+          path: spec.template.spec.containers[0].startupProbe.failureThreshold
+          value: 30
