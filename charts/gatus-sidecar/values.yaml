@@ -151,8 +151,9 @@ sidecar:
         - ALL
 
 # Gatus configuration — supplied as an external ConfigMap; this chart never
-# renders config. Add a checksum/reloader annotation under `podAnnotations`
-# yourself if you want pods to roll when the ConfigMap changes.
+# renders config. Set a Reloader annotation under `deploymentAnnotations`
+# (e.g. reloader.stakater.com/auto) if you want the pod to roll when the
+# ConfigMap changes.
 config:
   # -- REQUIRED: name of a ConfigMap holding your gatus config file(s).
   existingConfigMap: ""
@@ -203,7 +204,9 @@ nameOverride: ""
 # -- Override the full release name.
 fullnameOverride: ""
 
-# -- Annotations added to the pod (e.g. a config reloader annotation, since config is a BYO ConfigMap).
+# -- Annotations added to the Deployment (workload) metadata, e.g. `reloader.stakater.com/auto: "true"` so Stakater Reloader rolls the pod when the mounted config ConfigMap changes (Reloader reads the workload, not the pod).
+deploymentAnnotations: {}
+# -- Annotations added to the pod.
 podAnnotations: {}
 # -- Labels added to the pod.
 podLabels: {}

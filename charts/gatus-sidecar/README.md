@@ -61,6 +61,7 @@ Kubernetes: `>=1.29.0-0`
 | affinity | object | `{}` | Affinity rules for pod scheduling. |
 | config.existingConfigMap | string | `""` | REQUIRED: name of a ConfigMap holding your gatus config file(s). |
 | config.items | list | `[]` | ConfigMap keys to mount read-only into gatus.configPath; each `{ key, path }` mounts the ConfigMap's `key` at `<configPath>/<path>` (subPath). |
+| deploymentAnnotations | object | `{}` | Annotations added to the Deployment (workload) metadata, e.g. `reloader.stakater.com/auto: "true"` so Stakater Reloader rolls the pod when the mounted config ConfigMap changes (Reloader reads the workload, not the pod). |
 | fullnameOverride | string | `""` | Override the full release name. |
 | gatus.configPath | string | `"/config"` | Directory gatus reads (GATUS_CONFIG_PATH). The shared volume is mounted here; the sidecar writes its generated YAML here and the BYO ConfigMap files are overlaid on top. The chart always sets GATUS_CONFIG_PATH to this. |
 | gatus.delayStartSeconds | string | `""` | Delay gatus startup by N seconds (GATUS_DELAY_START_SECONDS). Omitted when empty or 0. |
@@ -110,7 +111,7 @@ Kubernetes: `>=1.29.0-0`
 | persistence.existingClaim | string | `""` | Use an existing PVC instead of creating one; when set, no PVC is rendered. |
 | persistence.size | string | `"1Gi"` | PVC size. |
 | persistence.storageClass | string | `""` | StorageClass for the PVC; empty uses the cluster default. |
-| podAnnotations | object | `{}` | Annotations added to the pod (e.g. a config reloader annotation, since config is a BYO ConfigMap). |
+| podAnnotations | object | `{}` | Annotations added to the pod. |
 | podDisruptionBudget.enabled | bool | `false` | Create a PodDisruptionBudget. ⚠️ With a single replica, the default `minAvailable: 1` makes a node drain block until you delete the pod yourself; set `maxUnavailable: 1` instead to let drains proceed. Off by default. |
 | podDisruptionBudget.maxUnavailable | string | `""` | Maximum pods that may be unavailable, as a count or percentage; takes precedence over `minAvailable` when set. @schema type: [integer, string] @schema |
 | podDisruptionBudget.minAvailable | int | `1` | Minimum pods that must stay available, as a count or percentage. Used unless `maxUnavailable` is set. @schema type: [integer, string] @schema |
