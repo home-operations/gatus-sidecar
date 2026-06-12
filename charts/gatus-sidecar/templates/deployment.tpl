@@ -5,6 +5,12 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "gatus-sidecar.labels" . | nindent 4 }}
+  {{- with .Values.deploymentAnnotations }}
+  # Workload-level annotations — e.g. a Stakater Reloader annotation, which must
+  # sit on the Deployment (not the pod) to roll it when the config ConfigMap changes.
+  annotations:
+    {{- tpl (toYaml .) $ | nindent 4 }}
+  {{- end }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:

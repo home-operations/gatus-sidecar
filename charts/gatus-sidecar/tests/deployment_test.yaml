@@ -172,6 +172,22 @@ tests:
           path: spec.template.spec.automountServiceAccountToken
           value: true
 
+  - it: omits Deployment annotations by default
+    template: deployment.tpl
+    asserts:
+      - notExists:
+          path: metadata.annotations
+
+  - it: renders deploymentAnnotations on the Deployment (e.g. a Reloader annotation)
+    template: deployment.tpl
+    set:
+      deploymentAnnotations:
+        reloader.stakater.com/auto: "true"
+    asserts:
+      - equal:
+          path: metadata.annotations["reloader.stakater.com/auto"]
+          value: "true"
+
   - it: sets the gatus env vars in order (CONFIG_PATH, WEB_PORT, then LOG_LEVEL)
     template: deployment.tpl
     set:

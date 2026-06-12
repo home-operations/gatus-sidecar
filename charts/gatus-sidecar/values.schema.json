@@ -8,7 +8,7 @@
       "type": "object"
     },
     "config": {
-      "description": "Gatus configuration — supplied as an external ConfigMap; this chart never\nrenders config. Add a checksum/reloader annotation under `podAnnotations`\nyourself if you want pods to roll when the ConfigMap changes.",
+      "description": "Gatus configuration — supplied as an external ConfigMap; this chart never\nrenders config. Set a Reloader annotation under `deploymentAnnotations`\n(e.g. reloader.stakater.com/auto) if you want the pod to roll when the\nConfigMap changes.",
       "properties": {
         "existingConfigMap": {
           "default": "",
@@ -27,6 +27,12 @@
       },
       "required": [],
       "title": "config",
+      "type": "object"
+    },
+    "deploymentAnnotations": {
+      "description": "Annotations added to the Deployment (workload) metadata, e.g. `reloader.stakater.com/auto: \"true\"` so Stakater Reloader rolls the pod when the mounted config ConfigMap changes (Reloader reads the workload, not the pod).",
+      "required": [],
+      "title": "deploymentAnnotations",
       "type": "object"
     },
     "fullnameOverride": {
@@ -557,7 +563,7 @@
       "type": "object"
     },
     "podAnnotations": {
-      "description": "Annotations added to the pod (e.g. a config reloader annotation, since config is a BYO ConfigMap).",
+      "description": "Annotations added to the pod.",
       "required": [],
       "title": "podAnnotations",
       "type": "object"
