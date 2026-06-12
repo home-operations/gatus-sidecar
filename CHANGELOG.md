@@ -53,6 +53,13 @@
   documented annotation behavior, URL-derivation rules, and the new prefix /
   multi-value-filter / log-level flags.
 
+## [0.2.2](https://github.com/home-operations/gatus-sidecar/compare/0.2.1...0.2.2) (2026-06-12)
+
+
+### Features
+
+* **chart:** support Deployment annotations on the gatus-sidecar chart ([#83](https://github.com/home-operations/gatus-sidecar/issues/83)) ([626831a](https://github.com/home-operations/gatus-sidecar/commit/626831a5de61f1f37103571897ca3a4f6450810b))
+
 ## [0.2.1](https://github.com/home-operations/gatus-sidecar/compare/0.2.0...0.2.1) (2026-06-12)
 
 
