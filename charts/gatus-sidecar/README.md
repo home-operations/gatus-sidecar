@@ -149,8 +149,8 @@ Kubernetes: `>=1.29.0-0`
 | sidecar.securityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"readOnlyRootFilesystem":true}` | gatus-sidecar container securityContext (no privilege escalation, read-only root filesystem, drops ALL capabilities). |
 | terminationGracePeriodSeconds | int | `30` | Grace period for a clean shutdown (gatus drains in-flight checks and closes its servers on SIGTERM). |
 | tests.image.pullPolicy | string | `"IfNotPresent"` | `helm test` image pull policy. |
-| tests.image.repository | string | `"mirror.gcr.io/busybox"` | `helm test` pod image; needs a shell with wget (gatus's own image lacks one). |
-| tests.image.tag | string | `"1.38.0@sha256:fd8d9aa63ba2f0982b5304e1ee8d3b90a210bc1ffb5314d980eb6962f1a9715d"` | `helm test` image, pinned as `tag@sha256:digest` so Renovate bumps the tag and its digest together. |
+| tests.image.repository | string | `"ghcr.io/home-operations/busybox"` | `helm test` pod image; needs a shell with wget (gatus's own image lacks one). |
+| tests.image.tag | string | `"1.38.0@sha256:7e2c04dd50ede647bf4a7a4c8dbd629dd4971cd139b9b88fb22bfc3c7a6c13df"` | `helm test` image, pinned as `tag@sha256:digest` so Renovate bumps the tag and its digest together. |
 | tolerations | list | `[]` | Tolerations for pod scheduling. |
 | volumeMounts | list | `[]` | Additional volume mounts on the gatus container. |
 | volumes | list | `[]` | Additional volumes on the Deployment pod. |
