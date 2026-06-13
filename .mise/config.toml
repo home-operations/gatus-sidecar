@@ -64,13 +64,12 @@ description = "Install the chart into the current cluster (e.g. a kind context) 
 # auto on) so kind needs no Gateway API CRDs, and gatus runs in-memory
 # (persistence off) from the ci/test-config.yaml ConfigMap. Export KUBECONFIG to
 # the kind context first (kind-action writes ~/.kube/config but does not export
-# the env var). The trap cleans up.
+# the env var).
 run = """
-trap 'helm uninstall gatus-e2e -n gatus-e2e --wait >/dev/null 2>&1 || true; kubectl delete -f charts/gatus-sidecar/ci/test-config.yaml -n gatus-e2e --ignore-not-found >/dev/null 2>&1 || true' EXIT
 set -e
 kubectl create namespace gatus-e2e --dry-run=client -o yaml | kubectl apply -f -
 kubectl apply -f charts/gatus-sidecar/ci/test-config.yaml -n gatus-e2e
-helm install gatus-e2e charts/gatus-sidecar -n gatus-e2e --create-namespace --wait --timeout 5m \
+helm upgrade --install gatus-e2e charts/gatus-sidecar -n gatus-e2e --create-namespace --wait --timeout 5m \
   --set sidecar.image.tag="${GATUS_TEST_IMAGE_TAG:-latest}" \
   --set sidecar.image.pullPolicy="${GATUS_TEST_PULL_POLICY:-IfNotPresent}" \
   --set sidecar.kinds.httproute.auto=false \
