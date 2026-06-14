@@ -42,8 +42,8 @@ spec:
         {{- tpl (toYaml .Values.podSecurityContext) $ | nindent 8 }}
       {{- with .Values.resources }}
       # Pod-level resources (Pod.spec.resources) — one budget shared by the gatus
-      # and sidecar containers. Needs Kubernetes 1.34+ (PodLevelResources beta) or
-      # 1.32–1.33 with the feature gate; older clusters silently ignore it.
+      # and sidecar containers. Needs Kubernetes 1.34+ (PodLevelResources beta, on
+      # by default); the chart's kubeVersion enforces this.
       resources:
         {{- tpl (toYaml .) $ | nindent 8 }}
       {{- end }}

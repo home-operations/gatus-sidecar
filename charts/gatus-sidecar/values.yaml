@@ -210,7 +210,7 @@ podSecurityContext:
   fsGroup: 1000
   fsGroupChangePolicy: OnRootMismatch
 
-# -- Pod-level resource requests/limits — the Kubernetes `Pod.spec.resources` field, one budget shared by the gatus and sidecar containers (no need to split it per container). Requires Kubernetes 1.34+ (PodLevelResources is beta, on by default), or 1.32–1.33 with the `PodLevelResources` feature gate enabled; older clusters silently ignore it. Empty leaves it unset.
+# -- Pod-level resource requests/limits — the Kubernetes `Pod.spec.resources` field, one budget shared by the gatus and sidecar containers (no need to split it per container). Needs Kubernetes 1.34+, where PodLevelResources is beta and on by default; the chart's kubeVersion enforces this. Empty leaves it unset.
 resources: {}
 #   limits:
 #     memory: 256Mi

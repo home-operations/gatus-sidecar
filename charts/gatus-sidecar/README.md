@@ -52,7 +52,7 @@ either `ingress` or a Gateway API `httpRoute`.
 
 ## Requirements
 
-Kubernetes: `>=1.29.0-0`
+Kubernetes: `>=1.34.0-0`
 
 ## Values
 
@@ -121,7 +121,7 @@ Kubernetes: `>=1.29.0-0`
 | rbac.extraRules | list | `[]` | Extra policy rules appended to the derived rules. The base rules are generated from the enabled `sidecar.kinds` (least privilege, get/list/watch), so you normally leave this empty. |
 | rbac.type | string | `"ClusterRole"` | RBAC scope: ClusterRole (watch all namespaces) or Role (single namespace; pair with the sidecar's `namespace`). |
 | replicaCount | int | `1` | Number of gatus replicas. Gatus is backed by a Deployment; with persistence enabled (a single RWO PVC) keep this at 1. |
-| resources | object | `{}` | Pod-level resource requests/limits — the Kubernetes `Pod.spec.resources` field, one budget shared by the gatus and sidecar containers (no need to split it per container). Requires Kubernetes 1.34+ (PodLevelResources is beta, on by default), or 1.32–1.33 with the `PodLevelResources` feature gate enabled; older clusters silently ignore it. Empty leaves it unset. |
+| resources | object | `{}` | Pod-level resource requests/limits — the Kubernetes `Pod.spec.resources` field, one budget shared by the gatus and sidecar containers (no need to split it per container). Needs Kubernetes 1.34+, where PodLevelResources is beta and on by default; the chart's kubeVersion enforces this. Empty leaves it unset. |
 | service.port | int | `80` | Service port (maps to the gatus web port; /metrics is served here too). |
 | service.type | string | `"ClusterIP"` | Service type. |
 | serviceAccount.annotations | object | `{}` | Annotations for the ServiceAccount. |
