@@ -12,7 +12,7 @@
       "properties": {
         "existingConfigMap": {
           "default": "",
-          "description": "REQUIRED: name of a ConfigMap holding your gatus config file(s).",
+          "description": "REQUIRED: name of a ConfigMap holding your gatus config file(s) (templated, so a release-derived name works).",
           "title": "existingConfigMap",
           "type": "string"
         },

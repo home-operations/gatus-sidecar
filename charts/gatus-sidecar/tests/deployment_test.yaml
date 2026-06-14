@@ -402,3 +402,17 @@ tests:
           path: spec.template.spec.containers[0].resources
       - notExists:
           path: spec.template.spec.initContainers[0].resources
+
+  - it: renders config.existingConfigMap through tpl
+    template: deployment.tpl
+    release:
+      name: prod
+    set:
+      config.existingConfigMap: "{{ .Release.Name }}-cfg"
+    asserts:
+      - equal:
+          path: spec.template.spec.volumes[0].name
+          value: config-files
+      - equal:
+          path: spec.template.spec.volumes[0].configMap.name
+          value: prod-cfg

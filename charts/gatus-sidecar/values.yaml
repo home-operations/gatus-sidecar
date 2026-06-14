@@ -146,7 +146,7 @@ sidecar:
 # (e.g. reloader.stakater.com/auto) if you want the pod to roll when the
 # ConfigMap changes.
 config:
-  # -- REQUIRED: name of a ConfigMap holding your gatus config file(s).
+  # -- REQUIRED: name of a ConfigMap holding your gatus config file(s) (templated, so a release-derived name works).
   existingConfigMap: ""
   # -- ConfigMap keys to mount read-only into gatus.configPath; each `{ key, path }` mounts the ConfigMap's `key` at `<configPath>/<path>` (subPath).
   items: []

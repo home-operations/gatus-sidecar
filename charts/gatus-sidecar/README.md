@@ -59,7 +59,7 @@ Kubernetes: `>=1.29.0-0`
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | affinity | object | `{}` | Affinity rules for pod scheduling. |
-| config.existingConfigMap | string | `""` | REQUIRED: name of a ConfigMap holding your gatus config file(s). |
+| config.existingConfigMap | string | `""` | REQUIRED: name of a ConfigMap holding your gatus config file(s) (templated, so a release-derived name works). |
 | config.items | list | `[]` | ConfigMap keys to mount read-only into gatus.configPath; each `{ key, path }` mounts the ConfigMap's `key` at `<configPath>/<path>` (subPath). |
 | deploymentAnnotations | object | `{}` | Annotations added to the Deployment (workload) metadata, e.g. `reloader.stakater.com/auto: "true"` so Stakater Reloader rolls the pod when the mounted config ConfigMap changes (Reloader reads the workload, not the pod). |
 | fullnameOverride | string | `""` | Override the full release name. |
