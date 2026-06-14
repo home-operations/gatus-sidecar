@@ -3,9 +3,10 @@ apiVersion: v2
 name: gatus-sidecar
 description: Deploy Gatus with the home-operations gatus-sidecar for automatic endpoint discovery
 type: application
-# Native sidecars (restartPolicy: Always init containers) are stable from 1.29,
-# and the Gateway API v1 HTTPRoute is GA there too.
-kubeVersion: ">=1.29.0-0"
+# Pod-level resources (Pod.spec.resources) are beta and on by default from 1.34,
+# so the chart's top-level `resources` works without enabling a feature gate.
+# (Native sidecars are stable from 1.29 and Gateway API v1 HTTPRoute is GA there.)
+kubeVersion: ">=1.34.0-0"
 # version + appVersion are overridden at package time: version from the release
 # tag (the gatus-sidecar repo's own version), appVersion from the pinned gatus
 # image tag.

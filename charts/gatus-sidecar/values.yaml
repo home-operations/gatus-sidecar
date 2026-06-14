@@ -50,13 +50,6 @@ gatus:
   envFrom: []
   #   - secretRef:
   #       name: gatus-secrets
-  # -- Gatus container resource requests/limits.
-  resources: {}
-  #   limits:
-  #     memory: 256Mi
-  #   requests:
-  #     cpu: 10m
-  #     memory: 64Mi
   # -- Gatus container securityContext (no privilege escalation, read-only root filesystem, drops ALL capabilities).
   securityContext:
     allowPrivilegeEscalation: false
@@ -140,8 +133,6 @@ sidecar:
   extraArgs: []
   # -- Extra environment variables for the sidecar container, as a raw list (templated).
   extraEnv: []
-  # -- gatus-sidecar container resource requests/limits.
-  resources: {}
   # -- gatus-sidecar container securityContext (no privilege escalation, read-only root filesystem, drops ALL capabilities).
   securityContext:
     allowPrivilegeEscalation: false
@@ -155,7 +146,7 @@ sidecar:
 # (e.g. reloader.stakater.com/auto) if you want the pod to roll when the
 # ConfigMap changes.
 config:
-  # -- REQUIRED: name of a ConfigMap holding your gatus config file(s).
+  # -- REQUIRED: name of a ConfigMap holding your gatus config file(s) (templated, so a release-derived name works).
   existingConfigMap: ""
   # -- ConfigMap keys to mount read-only into gatus.configPath; each `{ key, path }` mounts the ConfigMap's `key` at `<configPath>/<path>` (subPath).
   items: []
@@ -218,6 +209,14 @@ podSecurityContext:
   runAsGroup: 1000
   fsGroup: 1000
   fsGroupChangePolicy: OnRootMismatch
+
+# -- Pod-level resource requests/limits — the Kubernetes `Pod.spec.resources` field, one budget shared by the gatus and sidecar containers (no need to split it per container). Needs Kubernetes 1.34+, where PodLevelResources is beta and on by default; the chart's kubeVersion enforces this. Empty leaves it unset.
+resources: {}
+#   limits:
+#     memory: 256Mi
+#   requests:
+#     cpu: 50m
+#     memory: 128Mi
 
 service:
   # -- Service type.

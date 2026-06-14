@@ -12,7 +12,7 @@
       "properties": {
         "existingConfigMap": {
           "default": "",
-          "description": "REQUIRED: name of a ConfigMap holding your gatus config file(s).",
+          "description": "REQUIRED: name of a ConfigMap holding your gatus config file(s) (templated, so a release-derived name works).",
           "title": "existingConfigMap",
           "type": "string"
         },
@@ -191,14 +191,8 @@
           "title": "readinessProbe",
           "type": "object"
         },
-        "resources": {
-          "description": "  - secretRef:\n      name: gatus-secrets\nGatus container resource requests/limits.",
-          "required": [],
-          "title": "resources",
-          "type": "object"
-        },
         "securityContext": {
-          "description": "  limits:\n    memory: 256Mi\n  requests:\n    cpu: 10m\n    memory: 64Mi\nGatus container securityContext (no privilege escalation, read-only root filesystem, drops ALL capabilities).",
+          "description": "  - secretRef:\n      name: gatus-secrets\nGatus container securityContext (no privilege escalation, read-only root filesystem, drops ALL capabilities).",
           "properties": {
             "allowPrivilegeEscalation": {
               "default": false,
@@ -680,6 +674,12 @@
       "title": "replicaCount",
       "type": "integer"
     },
+    "resources": {
+      "description": "Pod-level resource requests/limits — the Kubernetes `Pod.spec.resources` field, one budget shared by the gatus and sidecar containers (no need to split it per container). Needs Kubernetes 1.34+, where PodLevelResources is beta and on by default; the chart's kubeVersion enforces this. Empty leaves it unset.",
+      "required": [],
+      "title": "resources",
+      "type": "object"
+    },
     "service": {
       "properties": {
         "port": {
@@ -939,12 +939,6 @@
           "description": "Include paths from match rules in probe URLs (--probe-paths); false probes bare hostnames.",
           "title": "probePaths",
           "type": "boolean"
-        },
-        "resources": {
-          "description": "gatus-sidecar container resource requests/limits.",
-          "required": [],
-          "title": "resources",
-          "type": "object"
         },
         "securityContext": {
           "description": "gatus-sidecar container securityContext (no privilege escalation, read-only root filesystem, drops ALL capabilities).",

@@ -40,6 +40,13 @@ spec:
       terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
       securityContext:
         {{- tpl (toYaml .Values.podSecurityContext) $ | nindent 8 }}
+      {{- with .Values.resources }}
+      # Pod-level resources (Pod.spec.resources) — one budget shared by the gatus
+      # and sidecar containers. Needs Kubernetes 1.34+ (PodLevelResources beta, on
+      # by default); the chart's kubeVersion enforces this.
+      resources:
+        {{- tpl (toYaml .) $ | nindent 8 }}
+      {{- end }}
       {{- if .Values.sidecar.enabled }}
       # Native sidecar: an init container with restartPolicy: Always runs for the
       # life of the pod, starting before — and stopping after — the gatus container.
@@ -60,10 +67,6 @@ spec:
           {{- end }}
           securityContext:
             {{- tpl (toYaml .Values.sidecar.securityContext) $ | nindent 12 }}
-          {{- with .Values.sidecar.resources }}
-          resources:
-            {{- tpl (toYaml .) $ | nindent 12 }}
-          {{- end }}
           volumeMounts:
             - name: config
               mountPath: {{ .Values.gatus.configPath }}
@@ -115,10 +118,6 @@ spec:
           {{- end }}
           {{- with .Values.gatus.readinessProbe }}
           readinessProbe:
-            {{- tpl (toYaml .) $ | nindent 12 }}
-          {{- end }}
-          {{- with .Values.gatus.resources }}
-          resources:
             {{- tpl (toYaml .) $ | nindent 12 }}
           {{- end }}
           volumeMounts:

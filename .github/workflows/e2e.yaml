@@ -79,13 +79,15 @@ jobs:
           experimental: true
           install_args: --locked
 
-      # Native sidecars (initContainer restartPolicy: Always) are stable from
-      # 1.29; pin a node image well past that so the gatus-sidecar starts.
+      # The chart requires Kubernetes 1.34+ (pod-level resources), so pin a 1.34
+      # node image: `helm install` must satisfy the chart's kubeVersion, and 1.34
+      # is where PodLevelResources is beta/on by default. kind ships 1.34 node
+      # images from v0.30.0, so bump the kind binary too.
       - name: Create Kind cluster
         uses: helm/kind-action@ef37e7f390d99f746eb8b610417061a60e82a6cc # v1.14.0
         with:
-          version: v0.27.0
-          node_image: kindest/node:v1.31.6
+          version: v0.30.0
+          node_image: kindest/node:v1.34.0
           cluster_name: gatus-sidecar-helm-e2e
           wait: 60s
 

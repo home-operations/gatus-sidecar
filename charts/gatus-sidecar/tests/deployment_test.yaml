@@ -370,3 +370,49 @@ tests:
       - equal:
           path: spec.template.spec.containers[0].startupProbe.failureThreshold
           value: 30
+
+  - it: omits pod-level resources by default and never sets them per-container
+    template: deployment.tpl
+    asserts:
+      - notExists:
+          path: spec.template.spec.resources
+      - notExists:
+          path: spec.template.spec.containers[0].resources
+      - notExists:
+          path: spec.template.spec.initContainers[0].resources
+
+  - it: sets pod-level resources (Pod.spec.resources) shared across containers when configured
+    template: deployment.tpl
+    set:
+      resources:
+        limits:
+          memory: 256Mi
+        requests:
+          cpu: 50m
+          memory: 128Mi
+    asserts:
+      - equal:
+          path: spec.template.spec.resources.limits.memory
+          value: 256Mi
+      - equal:
+          path: spec.template.spec.resources.requests.cpu
+          value: 50m
+      # pod-level only — the budget is not duplicated onto the gatus/sidecar containers
+      - notExists:
+          path: spec.template.spec.containers[0].resources
+      - notExists:
+          path: spec.template.spec.initContainers[0].resources
+
+  - it: renders config.existingConfigMap through tpl
+    template: deployment.tpl
+    release:
+      name: prod
+    set:
+      config.existingConfigMap: "{{ .Release.Name }}-cfg"
+    asserts:
+      - equal:
+          path: spec.template.spec.volumes[0].name
+          value: config-files
+      - equal:
+          path: spec.template.spec.volumes[0].configMap.name
+          value: prod-cfg

@@ -101,7 +101,7 @@ Name of the ConfigMap holding the gatus config files. This is required — the
 chart does not render config — so callers must set config.existingConfigMap.
 */}}
 {{- define "gatus-sidecar.configMapName" -}}
-{{- required "config.existingConfigMap is required: provide a ConfigMap with your gatus config files" .Values.config.existingConfigMap -}}
+{{- tpl (required "config.existingConfigMap is required: provide a ConfigMap with your gatus config files" .Values.config.existingConfigMap) $ -}}
 {{- end }}
 
 {{/*

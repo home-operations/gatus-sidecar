@@ -52,14 +52,14 @@ either `ingress` or a Gateway API `httpRoute`.
 
 ## Requirements
 
-Kubernetes: `>=1.29.0-0`
+Kubernetes: `>=1.34.0-0`
 
 ## Values
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | affinity | object | `{}` | Affinity rules for pod scheduling. |
-| config.existingConfigMap | string | `""` | REQUIRED: name of a ConfigMap holding your gatus config file(s). |
+| config.existingConfigMap | string | `""` | REQUIRED: name of a ConfigMap holding your gatus config file(s) (templated, so a release-derived name works). |
 | config.items | list | `[]` | ConfigMap keys to mount read-only into gatus.configPath; each `{ key, path }` mounts the ConfigMap's `key` at `<configPath>/<path>` (subPath). |
 | deploymentAnnotations | object | `{}` | Annotations added to the Deployment (workload) metadata, e.g. `reloader.stakater.com/auto: "true"` so Stakater Reloader rolls the pod when the mounted config ConfigMap changes (Reloader reads the workload, not the pod). |
 | fullnameOverride | string | `""` | Override the full release name. |
@@ -76,7 +76,6 @@ Kubernetes: `>=1.29.0-0`
 | gatus.logLevel | string | `"INFO"` | Gatus log level (GATUS_LOG_LEVEL: DEBUG, INFO, WARN, ERROR). Omitted when empty. |
 | gatus.port | int | `8080` | Container port, Service targetPort and probe port. Also exported as GATUS_WEB_PORT so your config can use `web.port: ${GATUS_WEB_PORT}`; gatus's actual listen port comes from its config file, so reference this var or match it. |
 | gatus.readinessProbe | object | `{"httpGet":{"path":"/health","port":"http"},"initialDelaySeconds":5,"periodSeconds":10}` | Gatus readiness probe. |
-| gatus.resources | object | `{}` | Gatus container resource requests/limits. |
 | gatus.securityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"readOnlyRootFilesystem":true}` | Gatus container securityContext (no privilege escalation, read-only root filesystem, drops ALL capabilities). |
 | gatus.startupProbe | object | `{}` | Gatus startup probe (optional). Gates liveness/readiness while gatus starts; empty disables it. |
 | httpRoute.additionalRules | list | `[]` | Custom rules prepended before the default rule (templated). |
@@ -122,6 +121,7 @@ Kubernetes: `>=1.29.0-0`
 | rbac.extraRules | list | `[]` | Extra policy rules appended to the derived rules. The base rules are generated from the enabled `sidecar.kinds` (least privilege, get/list/watch), so you normally leave this empty. |
 | rbac.type | string | `"ClusterRole"` | RBAC scope: ClusterRole (watch all namespaces) or Role (single namespace; pair with the sidecar's `namespace`). |
 | replicaCount | int | `1` | Number of gatus replicas. Gatus is backed by a Deployment; with persistence enabled (a single RWO PVC) keep this at 1. |
+| resources | object | `{}` | Pod-level resource requests/limits — the Kubernetes `Pod.spec.resources` field, one budget shared by the gatus and sidecar containers (no need to split it per container). Needs Kubernetes 1.34+, where PodLevelResources is beta and on by default; the chart's kubeVersion enforces this. Empty leaves it unset. |
 | service.port | int | `80` | Service port (maps to the gatus web port; /metrics is served here too). |
 | service.type | string | `"ClusterIP"` | Service type. |
 | serviceAccount.annotations | object | `{}` | Annotations for the ServiceAccount. |
@@ -145,7 +145,6 @@ Kubernetes: `>=1.29.0-0`
 | sidecar.namespace | string | `""` | Namespace to watch (--namespace); empty watches all namespaces (requires a ClusterRole). |
 | sidecar.output | string | `""` | File the sidecar writes generated YAML to (--output); empty defaults to `<gatus.configPath>/gatus-sidecar.yaml` (in the shared volume). |
 | sidecar.probePaths | bool | `true` | Include paths from match rules in probe URLs (--probe-paths); false probes bare hostnames. |
-| sidecar.resources | object | `{}` | gatus-sidecar container resource requests/limits. |
 | sidecar.securityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"readOnlyRootFilesystem":true}` | gatus-sidecar container securityContext (no privilege escalation, read-only root filesystem, drops ALL capabilities). |
 | terminationGracePeriodSeconds | int | `30` | Grace period for a clean shutdown (gatus drains in-flight checks and closes its servers on SIGTERM). |
 | tests.image.pullPolicy | string | `"IfNotPresent"` | `helm test` image pull policy. |
