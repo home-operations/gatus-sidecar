@@ -53,6 +53,17 @@
   documented annotation behavior, URL-derivation rules, and the new prefix /
   multi-value-filter / log-level flags.
 
+## [0.3.0](https://github.com/home-operations/gatus-sidecar/compare/0.2.2...0.3.0) (2026-06-14)
+
+
+### ⚠ BREAKING CHANGES
+
+* **chart:** use a single pod-level resources key (Pod.spec.resources) ([#87](https://github.com/home-operations/gatus-sidecar/issues/87))
+
+### Features
+
+* **chart:** use a single pod-level resources key (Pod.spec.resources) ([#87](https://github.com/home-operations/gatus-sidecar/issues/87)) ([3ef4971](https://github.com/home-operations/gatus-sidecar/commit/3ef49714724ce451b167f17e3038449beed60358))
+
 ## [0.2.2](https://github.com/home-operations/gatus-sidecar/compare/0.2.1...0.2.2) (2026-06-12)
 
 
