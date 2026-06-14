@@ -50,13 +50,6 @@ gatus:
   envFrom: []
   #   - secretRef:
   #       name: gatus-secrets
-  # -- Gatus container resource requests/limits.
-  resources: {}
-  #   limits:
-  #     memory: 256Mi
-  #   requests:
-  #     cpu: 10m
-  #     memory: 64Mi
   # -- Gatus container securityContext (no privilege escalation, read-only root filesystem, drops ALL capabilities).
   securityContext:
     allowPrivilegeEscalation: false
@@ -140,8 +133,6 @@ sidecar:
   extraArgs: []
   # -- Extra environment variables for the sidecar container, as a raw list (templated).
   extraEnv: []
-  # -- gatus-sidecar container resource requests/limits.
-  resources: {}
   # -- gatus-sidecar container securityContext (no privilege escalation, read-only root filesystem, drops ALL capabilities).
   securityContext:
     allowPrivilegeEscalation: false
@@ -218,6 +209,14 @@ podSecurityContext:
   runAsGroup: 1000
   fsGroup: 1000
   fsGroupChangePolicy: OnRootMismatch
+
+# -- Pod-level resource requests/limits — the Kubernetes `Pod.spec.resources` field, one budget shared by the gatus and sidecar containers (no need to split it per container). Requires Kubernetes 1.34+ (PodLevelResources is beta, on by default), or 1.32–1.33 with the `PodLevelResources` feature gate enabled; older clusters silently ignore it. Empty leaves it unset.
+resources: {}
+#   limits:
+#     memory: 256Mi
+#   requests:
+#     cpu: 50m
+#     memory: 128Mi
 
 service:
   # -- Service type.
