@@ -47,12 +47,17 @@ spec:
       resources:
         {{- tpl (toYaml .) $ | nindent 8 }}
       {{- end }}
-      {{- if .Values.sidecar.enabled }}
-      # Native sidecar: an init container with restartPolicy: Always runs for the
-      # life of the pod, starting before — and stopping after — the gatus container.
-      # It watches the cluster and writes its generated config into the shared
-      # /config volume, which gatus then reads.
+      {{- if or .Values.initContainers .Values.sidecar.enabled }}
       initContainers:
+        {{- with .Values.initContainers }}
+        {{- tpl (toYaml .) $ | nindent 8 }}
+        {{- end }}
+        {{- if .Values.sidecar.enabled }}
+        # Native sidecar: an init container with restartPolicy: Always runs for the
+        # life of the pod, starting before — and stopping after — the gatus container.
+        # It watches the cluster and writes its generated config into the shared
+        # /config volume, which gatus then reads. Any user initContainers above run
+        # to completion first.
         - name: gatus-sidecar
           image: {{ include "gatus-sidecar.sidecarImage" . | quote }}
           imagePullPolicy: {{ .Values.sidecar.image.pullPolicy }}
@@ -70,6 +75,7 @@ spec:
           volumeMounts:
             - name: config
               mountPath: {{ .Values.gatus.configPath }}
+        {{- end }}
       {{- end }}
       containers:
         - name: gatus

@@ -72,6 +72,35 @@ tests:
       - notExists:
           path: spec.template.spec.initContainers
 
+  - it: prepends user-supplied initContainers before the native sidecar
+    template: deployment.tpl
+    set:
+      initContainers:
+        - name: prep
+          image: mirror.gcr.io/busybox
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: prep
+      - equal:
+          path: spec.template.spec.initContainers[1].name
+          value: gatus-sidecar
+
+  - it: renders user initContainers even when the sidecar is disabled
+    template: deployment.tpl
+    set:
+      sidecar.enabled: false
+      initContainers:
+        - name: prep
+          image: mirror.gcr.io/busybox
+    asserts:
+      - lengthEqual:
+          path: spec.template.spec.initContainers
+          count: 1
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: prep
+
   - it: renders the default sidecar args from the structured config
     template: deployment.tpl
     asserts:

@@ -95,6 +95,7 @@ Kubernetes: `>=1.34.0-0`
 | ingress.enabled | bool | `false` | Expose the UI via an Ingress. |
 | ingress.hosts | list | `[{"host":"gatus.example.com","paths":[{"path":"/","pathType":"Prefix"}]}]` | Ingress hosts and their paths. |
 | ingress.tls | list | `[]` | Ingress TLS configuration. |
+| initContainers | list | `[]` | Extra initContainers (templated) added to the pod. They run, in order, before the gatus-sidecar native sidecar and the gatus container — use them to prep the shared config volume or wait on a dependency. For a long-running helper, set `restartPolicy: Always` to make it a native sidecar too. |
 | monitoring.serviceMonitor.annotations | object | `{}` | ServiceMonitor annotations. |
 | monitoring.serviceMonitor.enabled | bool | `false` | Create a Prometheus Operator ServiceMonitor (requires its CRDs). Scrapes the http port at `path`. |
 | monitoring.serviceMonitor.interval | string | `"30s"` | Scrape interval. |

@@ -324,6 +324,8 @@ podDisruptionBudget:
   # @schema
   maxUnavailable: ""
 
+# -- Extra initContainers (templated) added to the pod. They run, in order, before the gatus-sidecar native sidecar and the gatus container — use them to prep the shared config volume or wait on a dependency. For a long-running helper, set `restartPolicy: Always` to make it a native sidecar too.
+initContainers: []
 # -- Additional volumes on the Deployment pod.
 volumes: []
 # -- Additional volume mounts on the gatus container.
