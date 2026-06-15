@@ -53,6 +53,18 @@
   documented annotation behavior, URL-derivation rules, and the new prefix /
   multi-value-filter / log-level flags.
 
+## [0.3.1](https://github.com/home-operations/gatus-sidecar/compare/0.3.0...0.3.1) (2026-06-15)
+
+
+### Bug Fixes
+
+* **chart:** align pod securityContext to uid/gid/fsGroup 65532 ([#93](https://github.com/home-operations/gatus-sidecar/issues/93)) ([7c356ff](https://github.com/home-operations/gatus-sidecar/commit/7c356ff6f6fcb33686b699c988be0eadee6ece47))
+
+
+### Miscellaneous Chores
+
+* **chart:** use the shared curl image for the helm test pod ([#89](https://github.com/home-operations/gatus-sidecar/issues/89)) ([7238948](https://github.com/home-operations/gatus-sidecar/commit/7238948ca0e059a50975faa80741eadf8cf1068f))
+
 ## [0.3.0](https://github.com/home-operations/gatus-sidecar/compare/0.2.2...0.3.0) (2026-06-14)
 
 
