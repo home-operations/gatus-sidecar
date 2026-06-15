@@ -603,10 +603,10 @@
       "type": "object"
     },
     "podSecurityContext": {
-      "description": "Pod-level securityContext (runs as non-root uid/gid 1000 with fsGroup so the shared /config volume is writable).",
+      "description": "Pod-level securityContext (runs as non-root uid/gid 65532 with fsGroup so the shared /config volume is writable).",
       "properties": {
         "fsGroup": {
-          "default": 1000,
+          "default": 65532,
           "title": "fsGroup",
           "type": "integer"
         },
@@ -616,7 +616,7 @@
           "type": "string"
         },
         "runAsGroup": {
-          "default": 1000,
+          "default": 65532,
           "title": "runAsGroup",
           "type": "integer"
         },
@@ -626,7 +626,7 @@
           "type": "boolean"
         },
         "runAsUser": {
-          "default": 1000,
+          "default": 65532,
           "title": "runAsUser",
           "type": "integer"
         }
