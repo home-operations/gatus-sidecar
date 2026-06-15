@@ -53,6 +53,18 @@
   documented annotation behavior, URL-derivation rules, and the new prefix /
   multi-value-filter / log-level flags.
 
+## [0.3.2](https://github.com/home-operations/gatus-sidecar/compare/0.3.1...0.3.2) (2026-06-15)
+
+
+### Features
+
+* **chart:** allow user-supplied initContainers ([#96](https://github.com/home-operations/gatus-sidecar/issues/96)) ([353ded2](https://github.com/home-operations/gatus-sidecar/commit/353ded28e396e0b37fb6c67c5b802790c1f80006))
+
+
+### Miscellaneous Chores
+
+* **mise:** update tool oxfmt (0.54.0 → 0.55.0) ([#94](https://github.com/home-operations/gatus-sidecar/issues/94)) ([4cd3710](https://github.com/home-operations/gatus-sidecar/commit/4cd37105ea34f468b1bd612c32e9b08ec8878c3a))
+
 ## [0.3.1](https://github.com/home-operations/gatus-sidecar/compare/0.3.0...0.3.1) (2026-06-15)
 
 
