@@ -10,6 +10,6 @@ COPY . .
 RUN CGO_ENABLED=0 go build -ldflags "-s -w -X main.Version=${VERSION} -X main.Gitsha=${REVISION}" -trimpath -o /out/gatus-sidecar ./cmd/gatus-sidecar
 RUN upx --best --lzma /out/gatus-sidecar
 
-FROM scratch
+FROM gcr.io/distroless/static:nonroot
 COPY --from=builder /out/gatus-sidecar /gatus-sidecar
 ENTRYPOINT ["/gatus-sidecar"]
