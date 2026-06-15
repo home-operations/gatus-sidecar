@@ -202,12 +202,12 @@ podAnnotations: {}
 # -- Labels added to the pod.
 podLabels: {}
 
-# -- Pod-level securityContext (runs as non-root uid/gid 1000 with fsGroup so the shared /config volume is writable).
+# -- Pod-level securityContext (runs as non-root uid/gid 65532 with fsGroup so the shared /config volume is writable).
 podSecurityContext:
   runAsNonRoot: true
-  runAsUser: 1000
-  runAsGroup: 1000
-  fsGroup: 1000
+  runAsUser: 65532
+  runAsGroup: 65532
+  fsGroup: 65532
   fsGroupChangePolicy: OnRootMismatch
 
 # -- Pod-level resource requests/limits — the Kubernetes `Pod.spec.resources` field, one budget shared by the gatus and sidecar containers (no need to split it per container). Needs Kubernetes 1.34+, where PodLevelResources is beta and on by default; the chart's kubeVersion enforces this. Empty leaves it unset.

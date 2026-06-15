@@ -115,7 +115,7 @@ Kubernetes: `>=1.34.0-0`
 | podDisruptionBudget.maxUnavailable | string | `""` | Maximum pods that may be unavailable, as a count or percentage; takes precedence over `minAvailable` when set. @schema type: [integer, string] @schema |
 | podDisruptionBudget.minAvailable | int | `1` | Minimum pods that must stay available, as a count or percentage. Used unless `maxUnavailable` is set. @schema type: [integer, string] @schema |
 | podLabels | object | `{}` | Labels added to the pod. |
-| podSecurityContext | object | `{"fsGroup":1000,"fsGroupChangePolicy":"OnRootMismatch","runAsGroup":1000,"runAsNonRoot":true,"runAsUser":1000}` | Pod-level securityContext (runs as non-root uid/gid 1000 with fsGroup so the shared /config volume is writable). |
+| podSecurityContext | object | `{"fsGroup":65532,"fsGroupChangePolicy":"OnRootMismatch","runAsGroup":65532,"runAsNonRoot":true,"runAsUser":65532}` | Pod-level securityContext (runs as non-root uid/gid 65532 with fsGroup so the shared /config volume is writable). |
 | priorityClassName | string | `""` | PriorityClass for the pod, so gatus is less likely to be preempted/evicted under node pressure. Empty uses the cluster default. |
 | rbac.create | bool | `true` | Create RBAC (a (Cluster)Role + binding) granting the sidecar the access it needs. |
 | rbac.extraRules | list | `[]` | Extra policy rules appended to the derived rules. The base rules are generated from the enabled `sidecar.kinds` (least privilege, get/list/watch), so you normally leave this empty. |
