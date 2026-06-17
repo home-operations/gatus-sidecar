@@ -53,6 +53,13 @@
   documented annotation behavior, URL-derivation rules, and the new prefix /
   multi-value-filter / log-level flags.
 
+## [0.3.3](https://github.com/home-operations/gatus-sidecar/compare/0.3.2...0.3.3) (2026-06-17)
+
+
+### Miscellaneous Chores
+
+* **mise:** update tool helm (4.2.1 → 4.2.2) ([#98](https://github.com/home-operations/gatus-sidecar/issues/98)) ([ba089e4](https://github.com/home-operations/gatus-sidecar/commit/ba089e4433071ffea2987e9fdd2a0d65df65e10c))
+
 ## [0.3.2](https://github.com/home-operations/gatus-sidecar/compare/0.3.1...0.3.2) (2026-06-15)
 
 
