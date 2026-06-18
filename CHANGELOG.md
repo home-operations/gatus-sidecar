@@ -53,6 +53,13 @@
   documented annotation behavior, URL-derivation rules, and the new prefix /
   multi-value-filter / log-level flags.
 
+## [0.3.5](https://github.com/home-operations/gatus-sidecar/compare/0.3.4...0.3.5) (2026-06-18)
+
+
+### Features
+
+* **chart:** default the Deployment update strategy to Recreate ([#103](https://github.com/home-operations/gatus-sidecar/issues/103)) ([e099126](https://github.com/home-operations/gatus-sidecar/commit/e0991262150a29797123c953003502cb870d5850))
+
 ## [0.3.4](https://github.com/home-operations/gatus-sidecar/compare/0.3.3...0.3.4) (2026-06-18)
 
 
