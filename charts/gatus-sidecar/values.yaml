@@ -221,8 +221,8 @@ resources: {}
 service:
   # -- Service type.
   type: ClusterIP
-  # -- Service port (maps to the gatus web port; /metrics is served here too).
-  port: 80
+  # -- Service port (matches the gatus web/container port; /metrics is served here too).
+  port: 8080
 
 monitoring:
   serviceMonitor:
