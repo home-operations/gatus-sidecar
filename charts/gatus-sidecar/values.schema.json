@@ -691,8 +691,8 @@
     "service": {
       "properties": {
         "port": {
-          "default": 80,
-          "description": "Service port (maps to the gatus web port; /metrics is served here too).",
+          "default": 8080,
+          "description": "Service port (matches the gatus web/container port; /metrics is served here too).",
           "title": "port",
           "type": "integer"
         },

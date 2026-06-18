@@ -20,4 +20,4 @@ tests:
           value: true
       - contains:
           path: spec.containers[0].args
-          content: http://RELEASE-NAME-gatus-sidecar:80/health
+          content: http://RELEASE-NAME-gatus-sidecar:8080/health

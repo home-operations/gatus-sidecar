@@ -123,7 +123,7 @@ Kubernetes: `>=1.34.0-0`
 | rbac.type | string | `"ClusterRole"` | RBAC scope: ClusterRole (watch all namespaces) or Role (single namespace; pair with the sidecar's `namespace`). |
 | replicaCount | int | `1` | Number of gatus replicas. Gatus is backed by a Deployment; with persistence enabled (a single RWO PVC) keep this at 1. |
 | resources | object | `{}` | Pod-level resource requests/limits — the Kubernetes `Pod.spec.resources` field, one budget shared by the gatus and sidecar containers (no need to split it per container). Needs Kubernetes 1.34+, where PodLevelResources is beta and on by default; the chart's kubeVersion enforces this. Empty leaves it unset. |
-| service.port | int | `80` | Service port (maps to the gatus web port; /metrics is served here too). |
+| service.port | int | `8080` | Service port (matches the gatus web/container port; /metrics is served here too). |
 | service.type | string | `"ClusterIP"` | Service type. |
 | serviceAccount.annotations | object | `{}` | Annotations for the ServiceAccount. |
 | serviceAccount.automount | bool | `true` | Automount the ServiceAccount API token (on by default: the sidecar needs Kubernetes API access to discover endpoints). |
