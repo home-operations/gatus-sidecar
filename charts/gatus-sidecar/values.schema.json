@@ -990,6 +990,19 @@
       "title": "sidecar",
       "type": "object"
     },
+    "strategy": {
+      "description": "Deployment update strategy. Defaults to `Recreate` because gatus can be stateful: with `persistence` on (a single ReadWriteOnce PVC) a RollingUpdate would start the new pod before the old one releases the volume, which a RWO volume can't satisfy — deadlocking the rollout. Set `{type: RollingUpdate, rollingUpdate: {...}}` for a stateless deployment (persistence off, or an RWX volume).",
+      "properties": {
+        "type": {
+          "default": "Recreate",
+          "title": "type",
+          "type": "string"
+        }
+      },
+      "required": [],
+      "title": "strategy",
+      "type": "object"
+    },
     "terminationGracePeriodSeconds": {
       "default": 30,
       "description": "Grace period for a clean shutdown (gatus drains in-flight checks and closes its servers on SIGTERM).",

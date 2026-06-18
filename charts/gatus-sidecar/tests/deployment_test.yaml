@@ -18,6 +18,28 @@ tests:
       - notExists:
           path: spec.volumeClaimTemplates
 
+  - it: defaults to the Recreate update strategy (stateful-safe with a RWO PVC)
+    template: deployment.tpl
+    asserts:
+      - equal:
+          path: spec.strategy.type
+          value: Recreate
+
+  - it: honors a RollingUpdate strategy override
+    template: deployment.tpl
+    set:
+      strategy:
+        type: RollingUpdate
+        rollingUpdate:
+          maxUnavailable: 1
+    asserts:
+      - equal:
+          path: spec.strategy.type
+          value: RollingUpdate
+      - equal:
+          path: spec.strategy.rollingUpdate.maxUnavailable
+          value: 1
+
   - it: defaults the gatus image to repository:appVersion when no digest or tag is set
     template: deployment.tpl
     set:

@@ -147,6 +147,7 @@ Kubernetes: `>=1.34.0-0`
 | sidecar.output | string | `""` | File the sidecar writes generated YAML to (--output); empty defaults to `<gatus.configPath>/gatus-sidecar.yaml` (in the shared volume). |
 | sidecar.probePaths | bool | `true` | Include paths from match rules in probe URLs (--probe-paths); false probes bare hostnames. |
 | sidecar.securityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"readOnlyRootFilesystem":true}` | gatus-sidecar container securityContext (no privilege escalation, read-only root filesystem, drops ALL capabilities). |
+| strategy | object | `{"type":"Recreate"}` | Deployment update strategy. Defaults to `Recreate` because gatus can be stateful: with `persistence` on (a single ReadWriteOnce PVC) a RollingUpdate would start the new pod before the old one releases the volume, which a RWO volume can't satisfy — deadlocking the rollout. Set `{type: RollingUpdate, rollingUpdate: {...}}` for a stateless deployment (persistence off, or an RWX volume). |
 | terminationGracePeriodSeconds | int | `30` | Grace period for a clean shutdown (gatus drains in-flight checks and closes its servers on SIGTERM). |
 | tests.image.pullPolicy | string | `"IfNotPresent"` | `helm test` image pull policy. |
 | tests.image.repository | string | `"mirror.gcr.io/curlimages/curl"` | `helm test` connection-pod image; a gcr-mirrored curl, so the test never pulls from Docker Hub. |

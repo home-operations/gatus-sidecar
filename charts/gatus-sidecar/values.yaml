@@ -19,6 +19,10 @@
 # -- Number of gatus replicas. Gatus is backed by a Deployment; with persistence enabled (a single RWO PVC) keep this at 1.
 replicaCount: 1
 
+# -- Deployment update strategy. Defaults to `Recreate` because gatus can be stateful: with `persistence` on (a single ReadWriteOnce PVC) a RollingUpdate would start the new pod before the old one releases the volume, which a RWO volume can't satisfy — deadlocking the rollout. Set `{type: RollingUpdate, rollingUpdate: {...}}` for a stateless deployment (persistence off, or an RWX volume).
+strategy:
+  type: Recreate
+
 # Upstream Gatus — image and runtime settings. This image is pulled, never built
 # by this repo.
 gatus:
