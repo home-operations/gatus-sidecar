@@ -53,6 +53,13 @@
   documented annotation behavior, URL-derivation rules, and the new prefix /
   multi-value-filter / log-level flags.
 
+## [0.3.4](https://github.com/home-operations/gatus-sidecar/compare/0.3.3...0.3.4) (2026-06-18)
+
+
+### Features
+
+* **chart:** set the Service port to 8080 to match the container port ([#101](https://github.com/home-operations/gatus-sidecar/issues/101)) ([a9145eb](https://github.com/home-operations/gatus-sidecar/commit/a9145eba2789f9b9d8380358e94875022ffe7ab9))
+
 ## [0.3.3](https://github.com/home-operations/gatus-sidecar/compare/0.3.2...0.3.3) (2026-06-17)
 
 
