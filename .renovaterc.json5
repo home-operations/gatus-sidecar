@@ -22,6 +22,7 @@
       matchFileNames: [".mise/config.toml", "go.mod"],
       groupName: "Go toolchain",
       groupSlug: "go-toolchain",
+      minimumGroupSize: 2,
     },
     {
       // The sidecar image is this repo's own artifact: the release pipeline pins
