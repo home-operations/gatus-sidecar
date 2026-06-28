@@ -53,6 +53,21 @@
   documented annotation behavior, URL-derivation rules, and the new prefix /
   multi-value-filter / log-level flags.
 
+## [0.3.6](https://github.com/home-operations/gatus-sidecar/compare/0.3.5...0.3.6) (2026-06-28)
+
+
+### Features
+
+* **container:** update image mirror.gcr.io/curlimages/curl (8.20.0 → 8.21.0) ([#109](https://github.com/home-operations/gatus-sidecar/issues/109)) ([761bfb4](https://github.com/home-operations/gatus-sidecar/commit/761bfb43fbe87fa4c116ed1f3333ada879c13a0f))
+
+
+### Miscellaneous Chores
+
+* add minimumGroupSize to Go toolchain configuration ([e4878a1](https://github.com/home-operations/gatus-sidecar/commit/e4878a1024bfd864805b7a250579ebd4498d0437))
+* **mise:** Update tool oxfmt (0.55.0 → 0.56.0) ([#107](https://github.com/home-operations/gatus-sidecar/issues/107)) ([100236c](https://github.com/home-operations/gatus-sidecar/commit/100236cf2caf4c3882824c6735ffb11049886be0))
+* **mise:** Update tool zizmor (1.25.2 → 1.26.1) ([#105](https://github.com/home-operations/gatus-sidecar/issues/105)) ([f9c78c7](https://github.com/home-operations/gatus-sidecar/commit/f9c78c783bed70d1f08108996e69abe2714d1ce0))
+* **renovate:** inherit shared toolchain + chart-docs presets ([#110](https://github.com/home-operations/gatus-sidecar/issues/110)) ([1cbe9c9](https://github.com/home-operations/gatus-sidecar/commit/1cbe9c958c8616c0b7c81f70016d3119a47c526f))
+
 ## [0.3.5](https://github.com/home-operations/gatus-sidecar/compare/0.3.4...0.3.5) (2026-06-18)
 
 
