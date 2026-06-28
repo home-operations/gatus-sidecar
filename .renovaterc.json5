@@ -2,14 +2,4 @@
   $schema: "https://docs.renovatebot.com/renovate-schema.json",
   extends: ["local>home-operations/renovate-config"],
   postUpdateOptions: ["gomodTidy", "gomodUpdateImportPaths"],
-  packageRules: [
-    {
-      // The sidecar image is this repo's own artifact: the release pipeline pins
-      // its digest into the chart at publish time, so Renovate must not bump it
-      // here. Only the upstream gatus image is Renovate-managed.
-      description: "Sidecar image is pinned by CI, not Renovate",
-      matchDepNames: ["ghcr.io/home-operations/gatus-sidecar"],
-      enabled: false,
-    },
-  ],
 }
