@@ -56,8 +56,6 @@ jobs:
 
       - name: Run E2E tests
         run: |-
-          # kind-action exports KUBECONFIG to ~/.kube/config but does not
-          # propagate the env var to later steps, so set it explicitly here.
           export KUBECONFIG="${HOME}/.kube/config"
           go test -tags e2e -timeout 10m -v ./test/e2e/...
 
@@ -79,11 +77,9 @@ jobs:
           experimental: true
           install_args: --locked
 
-      # The chart requires Kubernetes 1.34+ (pod-level resources), so pin a 1.34
-      # node image: `helm install` must satisfy the chart's kubeVersion, and 1.34
-      # is where PodLevelResources is beta/on by default. kind ships 1.34 node
-      # images from v0.30.0, so bump the kind binary too.
       - name: Create Kind cluster
+        id: kind
+        background: true
         uses: helm/kind-action@ef37e7f390d99f746eb8b610417061a60e82a6cc # v1.14.0
         with:
           version: v0.30.0
@@ -91,22 +87,13 @@ jobs:
           cluster_name: gatus-sidecar-helm-e2e
           wait: 60s
 
-      - name: Kubernetes info
-        run: |
-          kubectl version
-          kubectl get nodes
-
       - name: Set up Buildx
         uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
 
-      # The Dockerfile reads GO_VERSION; mise is the source of truth, matching the
-      # release build.
       - name: Resolve toolchain versions
         id: tools
         run: echo "go=$(mise config get tools.go)" >> "$GITHUB_OUTPUT"
 
-      # Build this PR's sidecar image (not a published tag) so the test exercises
-      # the code under review; the GHA layer cache speeds repeat builds.
       - name: Build sidecar image
         uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
         with:
@@ -118,17 +105,20 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - wait: kind
+
+      - name: Kubernetes info
+        run: |
+          kubectl version
+          kubectl get nodes
+
       - name: Load sidecar image into kind
         run: kind load docker-image ghcr.io/home-operations/gatus-sidecar:e2e --name gatus-sidecar-helm-e2e
 
       - name: Helm install + test
         env:
-          # Install the kind-loaded PR image; Never so the kubelet uses it instead
-          # of pulling the (nonexistent) e2e tag from the registry.
           GATUS_TEST_IMAGE_TAG: e2e
           GATUS_TEST_PULL_POLICY: Never
         run: |-
-          # kind-action writes the kubeconfig to ~/.kube/config but does not export
-          # KUBECONFIG to later steps, so set it explicitly for the mise task.
           export KUBECONFIG="${HOME}/.kube/config"
           mise run helm-test
