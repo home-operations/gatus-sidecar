@@ -53,6 +53,18 @@
   documented annotation behavior, URL-derivation rules, and the new prefix /
   multi-value-filter / log-level flags.
 
+## [0.3.7](https://github.com/home-operations/gatus-sidecar/compare/0.3.6...0.3.7) (2026-07-01)
+
+
+### Features
+
+* **deps:** update module sigs.k8s.io/gateway-api (v1.5.1 → v1.6.0) ([#112](https://github.com/home-operations/gatus-sidecar/issues/112)) ([5388bea](https://github.com/home-operations/gatus-sidecar/commit/5388bea7eab29f3de9d24b3a570dd7c1281b7c83))
+
+
+### Miscellaneous Chores
+
+* **mise:** Update tool oxfmt (0.56.0 → 0.57.0) ([#113](https://github.com/home-operations/gatus-sidecar/issues/113)) ([138ba33](https://github.com/home-operations/gatus-sidecar/commit/138ba333bd109936015a05ab3e1c21b953103ef8))
+
 ## [0.3.6](https://github.com/home-operations/gatus-sidecar/compare/0.3.5...0.3.6) (2026-06-28)
 
 
