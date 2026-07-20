@@ -57,27 +57,27 @@ sub-config.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-    name: gatus
+  name: gatus
 spec:
-    template:
-        spec:
-            serviceAccountName: gatus-sidecar
-            containers:
-                - name: gatus
-                  image: ghcr.io/twin/gatus:latest
-                  volumeMounts:
-                      - { name: gatus-config, mountPath: /config }
-                - name: gatus-sidecar
-                  image: ghcr.io/home-operations/gatus-sidecar:latest
-                  args:
-                      - --auto-ingress
-                      - --auto-service
-                      - --auto-httproute
-                      - --gateway-name=production
-                  volumeMounts:
-                      - { name: gatus-config, mountPath: /config }
-            volumes:
-                - { name: gatus-config, emptyDir: {} }
+  template:
+    spec:
+      serviceAccountName: gatus-sidecar
+      containers:
+        - name: gatus
+          image: ghcr.io/twin/gatus:latest
+          volumeMounts:
+            - { name: gatus-config, mountPath: /config }
+        - name: gatus-sidecar
+          image: ghcr.io/home-operations/gatus-sidecar:latest
+          args:
+            - --auto-ingress
+            - --auto-service
+            - --auto-httproute
+            - --gateway-name=production
+          volumeMounts:
+            - { name: gatus-config, mountPath: /config }
+      volumes:
+        - { name: gatus-config, emptyDir: {} }
 ```
 
 Minimum RBAC for the controllers you enable:
@@ -87,18 +87,18 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata: { name: gatus-sidecar }
 rules:
-    - apiGroups: [""]
-      resources: ["services"]
-      verbs: ["get", "list", "watch"]
-    - apiGroups: ["networking.k8s.io"]
-      resources: ["ingresses", "ingressclasses"]
-      verbs: ["get", "list", "watch"]
-    - apiGroups: ["gateway.networking.k8s.io"]
-      resources: ["httproutes", "gateways"]
-      verbs: ["get", "list", "watch"]
-    - apiGroups: ["traefik.io"]
-      resources: ["ingressroutes"]
-      verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["services"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses", "ingressclasses"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["gateway.networking.k8s.io"]
+    resources: ["httproutes", "gateways"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["traefik.io"]
+    resources: ["ingressroutes"]
+    verbs: ["get", "list", "watch"]
 ```
 
 ## Configuration
@@ -204,9 +204,9 @@ but you still want to know DNS is resolving.
 
 ```yaml
 metadata:
-    annotations:
-        gatus.home-operations.com/endpoint: |
-            guarded: true
+  annotations:
+    gatus.home-operations.com/endpoint: |
+      guarded: true
 ```
 
 ## Examples
@@ -217,28 +217,28 @@ metadata:
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
-    name: prod
-    annotations:
-        gatus.home-operations.com/endpoint: |
-            alerts:
-              - type: slack
-                webhook-url: https://hooks.slack.com/...
+  name: prod
+  annotations:
+    gatus.home-operations.com/endpoint: |
+      alerts:
+        - type: slack
+          webhook-url: https://hooks.slack.com/...
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-    name: api
-    annotations:
-        gatus.home-operations.com/endpoint: |
-            interval: 30s
-            conditions:
-              - "[STATUS] == 200"
-              - "[RESPONSE_TIME] < 500"
+  name: api
+  annotations:
+    gatus.home-operations.com/endpoint: |
+      interval: 30s
+      conditions:
+        - "[STATUS] == 200"
+        - "[RESPONSE_TIME] < 500"
 spec:
-    parentRefs: [{ name: prod }]
-    hostnames: ["api.example.com"]
-    rules:
-        - matches: [{ path: { type: PathPrefix, value: "/v1" } }]
+  parentRefs: [{ name: prod }]
+  hostnames: ["api.example.com"]
+  rules:
+    - matches: [{ path: { type: PathPrefix, value: "/v1" } }]
 ```
 
 Generated endpoint URL: `https://api.example.com/v1` — inherits the Gateway's
