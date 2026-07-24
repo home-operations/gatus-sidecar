@@ -7,10 +7,13 @@ type: application
 # so the chart's top-level `resources` works without enabling a feature gate.
 # (Native sidecars are stable from 1.29 and Gateway API v1 HTTPRoute is GA there.)
 kubeVersion: ">=1.34.0-0"
-# version + appVersion are overridden at package time: version from the release
-# tag (the gatus-sidecar repo's own version), appVersion from the pinned gatus
-# image tag.
-version: 0.0.0
+# version is this repo's own release, stamped here by release-please and passed
+# to `helm package --version` at release time.
+version: 0.3.6 # x-release-please-version
+# appVersion tracks upstream Gatus, NOT this repo: the release packages with
+# --app-version taken from `.gatus.image.tag` in values.yaml (Renovate-pinned),
+# which is also the in-chart default for that tag. It is deliberately left a
+# placeholder and must not get an x-release-please-version annotation.
 appVersion: "0.0.0"
 home: https://github.com/home-operations/gatus-sidecar
 sources:

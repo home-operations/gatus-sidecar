@@ -59,12 +59,14 @@ tests:
           path: spec.template.spec.containers[0].image
           value: ghcr.io/twin/gatus@sha256:deadbeef
 
+  # The tag floats with the release-please-stamped chart version; assert the
+  # repo:semver shape rather than a hardcoded version.
   - it: defaults the sidecar image to repository:Chart.Version
     template: deployment.tpl
     asserts:
-      - equal:
+      - matchRegex:
           path: spec.template.spec.initContainers[0].image
-          value: ghcr.io/home-operations/gatus-sidecar:0.0.0
+          pattern: ^ghcr\.io/home-operations/gatus-sidecar:\d+\.\d+\.\d+$
 
   - it: prefers the sidecar digest over the tag when set
     template: deployment.tpl
