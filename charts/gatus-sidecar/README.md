@@ -2,7 +2,7 @@
 
 ![Version](https://img.shields.io/static/v1?label=Version&message=0.3.6&color=informational&style=flat-square) <!-- x-release-please-version -->
 ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square)
-![AppVersion](https://img.shields.io/static/v1?label=AppVersion&message=0.0.0&color=informational&style=flat-square)
+![AppVersion](https://img.shields.io/static/v1?label=AppVersion&message=0.3.6&color=informational&style=flat-square) <!-- x-release-please-version -->
 
 Deploy Gatus with the home-operations gatus-sidecar for automatic endpoint discovery
 
@@ -73,7 +73,7 @@ Kubernetes: `>=1.34.0-0`
 | gatus.image.digest | string | `""` | Pin the gatus image by digest (sha256:…); when set, overrides the tag. |
 | gatus.image.pullPolicy | string | `"IfNotPresent"` | Gatus image pull policy. |
 | gatus.image.repository | string | `"ghcr.io/twin/gatus"` | Gatus image repository. |
-| gatus.image.tag | string | `"v5.36.0"` | Gatus image tag (Renovate-managed). Also becomes the chart appVersion at package time. |
+| gatus.image.tag | string | `"v5.36.0"` | Gatus image tag (Renovate-managed). Required unless `gatus.image.digest` is set; the chart appVersion is this repo's own release, not Gatus's. |
 | gatus.livenessProbe | object | `{"httpGet":{"path":"/health","port":"http"},"initialDelaySeconds":10,"periodSeconds":20}` | Gatus liveness probe. |
 | gatus.logLevel | string | `"INFO"` | Gatus log level (GATUS_LOG_LEVEL: DEBUG, INFO, WARN, ERROR). Omitted when empty. |
 | gatus.port | int | `8080` | Container port, Service targetPort and probe port. Also exported as GATUS_WEB_PORT so your config can use `web.port: ${GATUS_WEB_PORT}`; gatus's actual listen port comes from its config file, so reference this var or match it. |

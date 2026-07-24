@@ -40,14 +40,22 @@ tests:
           path: spec.strategy.rollingUpdate.maxUnavailable
           value: 1
 
-  - it: defaults the gatus image to repository:appVersion when no digest or tag is set
+  # appVersion is this repo's release, so it is not a usable Gatus fallback: an
+  # unset tag has to fail loudly rather than render ghcr.io/twin/gatus:<ours>.
+  - it: fails when the gatus tag and digest are both unset
     template: deployment.tpl
     set:
       gatus.image.tag: ""
     asserts:
-      - equal:
+      - failedTemplate:
+          errorMessage: "gatus.image.tag is required unless gatus.image.digest is set"
+
+  - it: uses the pinned gatus tag from values
+    template: deployment.tpl
+    asserts:
+      - matchRegex:
           path: spec.template.spec.containers[0].image
-          value: ghcr.io/twin/gatus:0.0.0
+          pattern: ^ghcr\.io/twin/gatus:v\d+\.\d+\.\d+$
 
   - it: prefers the gatus digest over the tag when set
     template: deployment.tpl

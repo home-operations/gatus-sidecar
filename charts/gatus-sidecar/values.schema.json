@@ -100,7 +100,7 @@
             },
             "tag": {
               "default": "v5.36.0",
-              "description": "Gatus image tag (Renovate-managed). Also becomes the chart appVersion at package time.",
+              "description": "Gatus image tag (Renovate-managed). Required unless `gatus.image.digest` is set; the chart appVersion is this repo's own release, not Gatus's.",
               "title": "tag",
               "type": "string"
             }
