@@ -1,0 +1,268 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - "**.md"
+      - ".release-please-manifest.json"
+  pull_request:
+    branches:
+      - main
+  merge_group:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  # renovate: datasource=github-releases depName=helm-unittest/helm-unittest
+  HELM_UNITTEST_VERSION: "v1.1.2"
+
+jobs:
+  go-e2e:
+    if: >-
+      ${{ github.event_name != 'push'
+      && !(startsWith(github.head_ref, 'release-please--')
+      && github.event.pull_request.head.repo.full_name == github.repository) }}
+    name: Go E2E
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Mise
+        uses: jdx/mise-action@dad1bfd3df957f44999b559dd69dc1671cb4e9ea # v4.2.1
+        with:
+          cache_key: "mise-e2e-v1-{{file_hash}}"
+          install_args: --locked
+
+      - name: Create Kind cluster
+        uses: helm/kind-action@ef37e7f390d99f746eb8b610417061a60e82a6cc # v1.14.0
+        with:
+          version: v0.27.0
+          cluster_name: gatus-sidecar-e2e
+          config: test/e2e/kind-config.yaml
+          wait: 60s
+
+      - name: Kubernetes info
+        run: |
+          kubectl version
+          kubectl get nodes
+
+      - name: Run E2E tests
+        run: |-
+          export KUBECONFIG="${HOME}/.kube/config"
+          go test -tags e2e -timeout 10m -v ./test/e2e/...
+
+  go-lint:
+    if: >-
+      ${{ !(startsWith(github.head_ref, 'release-please--')
+      && github.event.pull_request.head.repo.full_name == github.repository) }}
+    name: Go Lint
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Mise
+        uses: jdx/mise-action@dad1bfd3df957f44999b559dd69dc1671cb4e9ea # v4.2.1
+        with:
+          experimental: true
+          install_args: --locked
+
+      - name: Cache golangci-lint
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/golangci-lint
+          key: ${{ runner.os }}-golangci-lint-${{ hashFiles('go.sum', '.golangci.yml') }}
+          restore-keys: ${{ runner.os }}-golangci-lint-
+
+      - name: Run linter
+        run: mise run lint
+
+  go-test:
+    if: >-
+      ${{ !(startsWith(github.head_ref, 'release-please--')
+      && github.event.pull_request.head.repo.full_name == github.repository) }}
+    name: Go Test
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Mise
+        uses: jdx/mise-action@dad1bfd3df957f44999b559dd69dc1671cb4e9ea # v4.2.1
+        with:
+          experimental: true
+          install_args: --locked
+
+      - name: Check go.mod tidiness
+        run: |
+          go mod tidy
+          git diff --exit-code go.mod go.sum
+
+      - name: Check generated files are current
+        run: mise run generate-check
+
+      - name: Run unit tests
+        run: mise run test
+
+  helm-e2e:
+    if: >-
+      ${{ github.event_name != 'push'
+      && !(startsWith(github.head_ref, 'release-please--')
+      && github.event.pull_request.head.repo.full_name == github.repository) }}
+    name: Helm E2E
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Mise
+        uses: jdx/mise-action@dad1bfd3df957f44999b559dd69dc1671cb4e9ea # v4.2.1
+        with:
+          experimental: true
+          install_args: --locked
+
+      - name: Create Kind cluster
+        id: kind
+        background: true
+        uses: helm/kind-action@ef37e7f390d99f746eb8b610417061a60e82a6cc # v1.14.0
+        with:
+          version: v0.30.0
+          node_image: kindest/node:v1.34.0
+          cluster_name: gatus-sidecar-helm-e2e
+          wait: 60s
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - name: Resolve toolchain versions
+        id: tools
+        run: echo "go=$(mise config get tools.go)" >> "$GITHUB_OUTPUT"
+
+      - name: Build sidecar image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          load: true
+          tags: ghcr.io/home-operations/gatus-sidecar:e2e
+          build-args: |
+            GO_VERSION=${{ steps.tools.outputs.go }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - wait: kind
+
+      - name: Kubernetes info
+        run: |
+          kubectl version
+          kubectl get nodes
+
+      - name: Load sidecar image into kind
+        run: kind load docker-image ghcr.io/home-operations/gatus-sidecar:e2e --name gatus-sidecar-helm-e2e
+
+      - name: Helm install + test
+        env:
+          GATUS_TEST_IMAGE_TAG: e2e
+          GATUS_TEST_PULL_POLICY: Never
+        run: |-
+          export KUBECONFIG="${HOME}/.kube/config"
+          mise run helm-test
+
+  helm-lint:
+    if: >-
+      ${{ !(startsWith(github.head_ref, 'release-please--')
+      && github.event.pull_request.head.repo.full_name == github.repository) }}
+    name: Helm Lint
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Mise
+        uses: jdx/mise-action@dad1bfd3df957f44999b559dd69dc1671cb4e9ea # v4.2.1
+        with:
+          experimental: true
+          install_args: --locked
+
+      - name: Run helm lint
+        run: mise run helm-lint
+
+  helm-unittest:
+    if: >-
+      ${{ !(startsWith(github.head_ref, 'release-please--')
+      && github.event.pull_request.head.repo.full_name == github.repository) }}
+    name: Helm Unittest
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Mise
+        uses: jdx/mise-action@dad1bfd3df957f44999b559dd69dc1671cb4e9ea # v4.2.1
+        with:
+          experimental: true
+          install_args: --locked
+
+      - name: Run helm unit tests
+        run: |-
+          helm plugin install https://github.com/helm-unittest/helm-unittest --version "${HELM_UNITTEST_VERSION}" --verify=false
+          mise run helm-unittest
+
+  status:
+    if: ${{ !cancelled() }}
+    name: Build Success
+    needs:
+      - go-e2e
+      - go-lint
+      - go-test
+      - helm-e2e
+      - helm-lint
+      - helm-unittest
+    runs-on: ubuntu-24.04
+    permissions: {}
+    steps:
+      - name: Any jobs failed?
+        if: ${{ contains(needs.*.result, 'failure') }}
+        run: |
+          exit 1
+
+      - name: All jobs passed or skipped?
+        if: ${{ !(contains(needs.*.result, 'failure')) }}
+        run: |
+          echo "All jobs passed or skipped" && echo "${{ toJSON(needs.*.result) }}"
