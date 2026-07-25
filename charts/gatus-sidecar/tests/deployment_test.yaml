@@ -42,13 +42,13 @@ tests:
 
   # appVersion is this repo's release, so it is not a usable Gatus fallback: an
   # unset tag has to fail loudly rather than render ghcr.io/twin/gatus:<ours>.
-  - it: fails when the gatus tag and digest are both unset
+  - it: fails when the gatus tag is unset
     template: deployment.tpl
     set:
       gatus.image.tag: ""
     asserts:
       - failedTemplate:
-          errorMessage: "gatus.image.tag is required unless gatus.image.digest is set"
+          errorMessage: "gatus.image.tag is required"
 
   # values pins the tag as tag@sha256:digest, so the reference carries both.
   - it: uses the pinned gatus tag and digest from values
@@ -58,15 +58,26 @@ tests:
           path: spec.template.spec.containers[0].image
           pattern: ^ghcr\.io/twin/gatus:v\d+\.\d+\.\d+@sha256:[a-f0-9]{64}$
 
-  - it: prefers the gatus digest over the tag when set
+  # A leftover gatus.image.digest from before it was removed would otherwise be
+  # ignored in silence, leaving the operator believing they are pinned.
+  - it: rejects the removed gatus.image.digest instead of ignoring it
     template: deployment.tpl
     set:
       gatus.image.digest: sha256:deadbeef
-      gatus.image.tag: ignored
     asserts:
-      - equal:
+      - failedTemplate:
+          errorMessage: "gatus.image.digest was removed: put the digest in gatus.image.tag as `tag@sha256:…` (a value here would otherwise be ignored silently)"
+
+  # Copying the old values block leaves an empty digest behind; it pins nothing,
+  # so it must not be treated as a stale pin.
+  - it: tolerates a leftover empty gatus.image.digest
+    template: deployment.tpl
+    set:
+      gatus.image.digest: ""
+    asserts:
+      - matchRegex:
           path: spec.template.spec.containers[0].image
-          value: ghcr.io/twin/gatus@sha256:deadbeef
+          pattern: ^ghcr\.io/twin/gatus:v\d+\.\d+\.\d+@sha256:[a-f0-9]{64}$
 
   # The tag floats with the release-please-stamped chart version; assert the
   # repo:semver shape rather than a hardcoded version.

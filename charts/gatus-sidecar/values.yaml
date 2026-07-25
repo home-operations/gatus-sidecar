@@ -29,10 +29,8 @@ gatus:
   image:
     # -- Gatus image repository.
     repository: ghcr.io/twin/gatus
-    # -- Gatus image tag, pinned as `tag@sha256:digest` so Renovate bumps the tag and its digest together (same as `tests.image.tag`). Required unless `gatus.image.digest` is set; the chart appVersion is this repo's own release, not Gatus's.
+    # -- Gatus image tag, pinned as `tag@sha256:digest` so Renovate bumps the tag and its digest together (same as `tests.image.tag`). Required; the chart appVersion is this repo's own release, not Gatus's.
     tag: "v5.36.0@sha256:c5f210d095fa78e6efaa20ffeb14803f2ba4f10615e16a6d12087697149617f0"
-    # -- Pin the gatus image by digest alone (sha256:…), dropping the tag from the reference; when set, overrides the tag.
-    digest: ""
     # -- Gatus image pull policy.
     pullPolicy: IfNotPresent
   # -- Directory gatus reads (GATUS_CONFIG_PATH). The shared volume is mounted here; the sidecar writes its generated YAML here and the BYO ConfigMap files are overlaid on top. The chart always sets GATUS_CONFIG_PATH to this.

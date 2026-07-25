@@ -80,12 +80,6 @@
         },
         "image": {
           "properties": {
-            "digest": {
-              "default": "",
-              "description": "Pin the gatus image by digest alone (sha256:…), dropping the tag from the reference; when set, overrides the tag.",
-              "title": "digest",
-              "type": "string"
-            },
             "pullPolicy": {
               "default": "IfNotPresent",
               "description": "Gatus image pull policy.",

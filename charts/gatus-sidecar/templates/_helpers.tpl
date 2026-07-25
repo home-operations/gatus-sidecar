@@ -60,16 +60,17 @@ Service account name to use.
 {{- end }}
 
 {{/*
-Gatus container image reference. A digest pins immutably and wins when set;
-otherwise it's repository:tag. The tag has no chart-level fallback — appVersion
-is this repo's release, not Gatus's — so it is required. Renovate bumps it.
+Gatus container image reference: repository:tag, where the tag carries its own
+`@sha256:…` pin (see values). There is no chart-level fallback — appVersion is
+this repo's release, not Gatus's — so the tag is required. Renovate bumps it.
 */}}
 {{- define "gatus-sidecar.image" -}}
+{{- /* Truthiness, not hasKey: a leftover empty `digest: ""` pins nothing and is
+harmless, but a real value would be silently ignored — fail on that one. */ -}}
 {{- if .Values.gatus.image.digest -}}
-{{- printf "%s@%s" .Values.gatus.image.repository .Values.gatus.image.digest -}}
-{{- else -}}
-{{- printf "%s:%s" .Values.gatus.image.repository (required "gatus.image.tag is required unless gatus.image.digest is set" .Values.gatus.image.tag) -}}
+{{- fail "gatus.image.digest was removed: put the digest in gatus.image.tag as `tag@sha256:…` (a value here would otherwise be ignored silently)" -}}
 {{- end -}}
+{{- printf "%s:%s" .Values.gatus.image.repository (required "gatus.image.tag is required" .Values.gatus.image.tag) -}}
 {{- end }}
 
 {{/*
