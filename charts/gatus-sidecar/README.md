@@ -70,10 +70,10 @@ Kubernetes: `>=1.34.0-0`
 | gatus.env | object | `{}` | Extra environment variables for the gatus container, as a map (templated), e.g. TZ or `${VAR}` substitution values referenced by your config. |
 | gatus.envFrom | list | `[]` | Sources of environment variables for the gatus container (templated), e.g. a Secret holding buddy.yaml Pushover tokens. |
 | gatus.extraEnv | list | `[]` | Extra environment variables for the gatus container, as a raw list (templated). |
-| gatus.image.digest | string | `""` | Pin the gatus image by digest (sha256:…); when set, overrides the tag. |
+| gatus.image.digest | string | `""` | Pin the gatus image by digest alone (sha256:…), dropping the tag from the reference; when set, overrides the tag. |
 | gatus.image.pullPolicy | string | `"IfNotPresent"` | Gatus image pull policy. |
 | gatus.image.repository | string | `"ghcr.io/twin/gatus"` | Gatus image repository. |
-| gatus.image.tag | string | `"v5.36.0"` | Gatus image tag (Renovate-managed). Required unless `gatus.image.digest` is set; the chart appVersion is this repo's own release, not Gatus's. |
+| gatus.image.tag | string | `"v5.36.0@sha256:c5f210d095fa78e6efaa20ffeb14803f2ba4f10615e16a6d12087697149617f0"` | Gatus image tag, pinned as `tag@sha256:digest` so Renovate bumps the tag and its digest together (same as `tests.image.tag`). Required unless `gatus.image.digest` is set; the chart appVersion is this repo's own release, not Gatus's. |
 | gatus.livenessProbe | object | `{"httpGet":{"path":"/health","port":"http"},"initialDelaySeconds":10,"periodSeconds":20}` | Gatus liveness probe. |
 | gatus.logLevel | string | `"INFO"` | Gatus log level (GATUS_LOG_LEVEL: DEBUG, INFO, WARN, ERROR). Omitted when empty. |
 | gatus.port | int | `8080` | Container port, Service targetPort and probe port. Also exported as GATUS_WEB_PORT so your config can use `web.port: ${GATUS_WEB_PORT}`; gatus's actual listen port comes from its config file, so reference this var or match it. |

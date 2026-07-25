@@ -50,12 +50,13 @@ tests:
       - failedTemplate:
           errorMessage: "gatus.image.tag is required unless gatus.image.digest is set"
 
-  - it: uses the pinned gatus tag from values
+  # values pins the tag as tag@sha256:digest, so the reference carries both.
+  - it: uses the pinned gatus tag and digest from values
     template: deployment.tpl
     asserts:
       - matchRegex:
           path: spec.template.spec.containers[0].image
-          pattern: ^ghcr\.io/twin/gatus:v\d+\.\d+\.\d+$
+          pattern: ^ghcr\.io/twin/gatus:v\d+\.\d+\.\d+@sha256:[a-f0-9]{64}$
 
   - it: prefers the gatus digest over the tag when set
     template: deployment.tpl
