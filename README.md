@@ -2,9 +2,7 @@
 
 > A Kubernetes sidecar for [Gatus](https://github.com/TwiN/gatus) — turns Ingress, Service, Gateway API HTTPRoute, and Traefik IngressRoute resources into Gatus endpoint configuration, automatically.
 
-[![CI](https://github.com/home-operations/gatus-sidecar/actions/workflows/tests.yaml/badge.svg)](https://github.com/home-operations/gatus-sidecar/actions/workflows/tests.yaml)
-[![E2E](https://github.com/home-operations/gatus-sidecar/actions/workflows/e2e.yaml/badge.svg)](https://github.com/home-operations/gatus-sidecar/actions/workflows/e2e.yaml)
-[![Lint](https://github.com/home-operations/gatus-sidecar/actions/workflows/lint.yaml/badge.svg)](https://github.com/home-operations/gatus-sidecar/actions/workflows/lint.yaml)
+[![CI](https://github.com/home-operations/gatus-sidecar/actions/workflows/ci.yaml/badge.svg)](https://github.com/home-operations/gatus-sidecar/actions/workflows/ci.yaml)
 [![Release](https://img.shields.io/github/v/release/home-operations/gatus-sidecar)](https://github.com/home-operations/gatus-sidecar/releases)
 [![License](https://img.shields.io/github/license/home-operations/gatus-sidecar)](LICENSE)
 
