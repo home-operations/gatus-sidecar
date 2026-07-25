@@ -80,12 +80,6 @@
         },
         "image": {
           "properties": {
-            "digest": {
-              "default": "",
-              "description": "Pin the gatus image by digest (sha256:…); when set, overrides the tag.",
-              "title": "digest",
-              "type": "string"
-            },
             "pullPolicy": {
               "default": "IfNotPresent",
               "description": "Gatus image pull policy.",
@@ -99,8 +93,8 @@
               "type": "string"
             },
             "tag": {
-              "default": "v5.36.0",
-              "description": "Gatus image tag (Renovate-managed). Also becomes the chart appVersion at package time.",
+              "default": "v5.36.0@sha256:c5f210d095fa78e6efaa20ffeb14803f2ba4f10615e16a6d12087697149617f0",
+              "description": "Gatus image tag, pinned as `tag",
               "title": "tag",
               "type": "string"
             }

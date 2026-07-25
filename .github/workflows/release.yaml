@@ -109,7 +109,7 @@ jobs:
           [ -n "${GATUS_TAG}" ] && [ "${GATUS_TAG}" != "null" ] || { echo "gatus.image.tag is unset; Renovate should pin it"; exit 1; }
           helm package charts/gatus-sidecar \
             --version "${VERSION}" \
-            --app-version "${GATUS_TAG}"
+            --app-version "${VERSION}"
 
       - name: Log in to Container Registry
         uses: docker/login-action@06fb636fac595d6fb4b28a5dfcb21a6f5091859c # v4.5.0
