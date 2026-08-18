@@ -313,6 +313,7 @@ dnsConfig: {}
 #   options:
 #     - name: ndots
 #       value: "1"
+
 # -- Grace period for a clean shutdown (gatus drains in-flight checks and closes its servers on SIGTERM).
 terminationGracePeriodSeconds: 30
 

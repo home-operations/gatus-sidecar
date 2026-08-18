@@ -1011,7 +1011,7 @@
     },
     "terminationGracePeriodSeconds": {
       "default": 30,
-      "description": "  options:\n    - name: ndots\n      value: \"1\"\nGrace period for a clean shutdown (gatus drains in-flight checks and closes its servers on SIGTERM).",
+      "description": "Grace period for a clean shutdown (gatus drains in-flight checks and closes its servers on SIGTERM).",
       "title": "terminationGracePeriodSeconds",
       "type": "integer"
     },
