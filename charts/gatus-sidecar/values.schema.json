@@ -75,7 +75,7 @@
           "type": "object"
         },
         "envFrom": {
-          "description": "  - name: GOMEMLIMIT\n    value: \"200MiB\"\nSources of environment variables for the gatus container (templated), e.g. a Secret holding buddy.yaml Pushover tokens.",
+          "description": "Sources of environment variables for the gatus container (templated), e.g. a Secret holding buddy.yaml Pushover tokens.",
           "items": {
             "required": []
           },
@@ -83,7 +83,7 @@
           "type": "array"
         },
         "extraEnv": {
-          "description": "  TZ: UTC\nExtra environment variables for the gatus container, as a raw list (templated).",
+          "description": "Extra environment variables for the gatus container, as a raw list (templated).",
           "items": {
             "required": []
           },
@@ -198,7 +198,7 @@
           "type": "object"
         },
         "securityContext": {
-          "description": "  - secretRef:\n      name: gatus-secrets\nGatus container securityContext (no privilege escalation, read-only root filesystem, drops ALL capabilities).",
+          "description": "Gatus container securityContext (no privilege escalation, read-only root filesystem, drops ALL capabilities).",
           "properties": {
             "allowPrivilegeEscalation": {
               "default": false,
@@ -255,7 +255,7 @@
       "description": "Gateway API HTTPRoute — an alternative to `ingress` for clusters using the\nGateway API. Renders one HTTPRoute pointing at the app service port. Named\n`httpRoute` (not `route`) to avoid confusion with the OpenShift Route kind.",
       "properties": {
         "additionalRules": {
-          "description": " - gatus.example.com\nCustom rules prepended before the default rule (templated).",
+          "description": "Custom rules prepended before the default rule (templated).",
           "items": {
             "required": []
           },
@@ -289,7 +289,7 @@
           "type": "array"
         },
         "hostnames": {
-          "description": " - name: gateway\n   namespace: gateway\n   sectionName: https\nHostnames matched against the Host header (templated).",
+          "description": "Hostnames matched against the Host header (templated).",
           "items": {
             "required": []
           },
