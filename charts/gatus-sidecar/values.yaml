@@ -44,14 +44,17 @@ gatus:
   # -- Extra environment variables for the gatus container, as a map (templated), e.g. TZ or `${VAR}` substitution values referenced by your config.
   env: {}
   #   TZ: UTC
+
   # -- Extra environment variables for the gatus container, as a raw list (templated).
   extraEnv: []
   #   - name: GOMEMLIMIT
   #     value: "200MiB"
+
   # -- Sources of environment variables for the gatus container (templated), e.g. a Secret holding buddy.yaml Pushover tokens.
   envFrom: []
   #   - secretRef:
   #       name: gatus-secrets
+
   # -- Gatus container securityContext (no privilege escalation, read-only root filesystem, drops ALL capabilities).
   securityContext:
     allowPrivilegeEscalation: false
@@ -283,9 +286,11 @@ httpRoute:
   #  - name: gateway
   #    namespace: gateway
   #    sectionName: https
+
   # -- Hostnames matched against the Host header (templated).
   hostnames: []
   #  - gatus.example.com
+
   # -- Custom rules prepended before the default rule (templated).
   additionalRules: []
   # -- Filters applied to the default rule.
