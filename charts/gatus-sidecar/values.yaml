@@ -306,6 +306,13 @@ tolerations: []
 affinity: {}
 # -- PriorityClass for the pod, so gatus is less likely to be preempted/evicted under node pressure. Empty uses the cluster default.
 priorityClassName: ""
+# -- Pod dnsPolicy (templated); empty leaves it to Kubernetes (ClusterFirst). Only needed alongside `dnsConfig` overrides that require a specific policy (e.g. `None`).
+dnsPolicy: ""
+# -- Pod dnsConfig (templated). Kubelet's default `ndots:5` makes the resolver walk the pod's DNS search list for every probe hostname, so each check burns extra guaranteed-NXDOMAIN lookups; when an endpoint template sets `client.dns-resolver`, that walk goes to the external resolver and leaks internal `<namespace>.svc.cluster.local` names to it. Setting `ndots: "1"` (example below) makes external hostnames resolve directly.
+dnsConfig: {}
+#   options:
+#     - name: ndots
+#       value: "1"
 # -- Grace period for a clean shutdown (gatus drains in-flight checks and closes its servers on SIGTERM).
 terminationGracePeriodSeconds: 30
 

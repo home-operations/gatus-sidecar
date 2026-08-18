@@ -64,6 +64,8 @@ Kubernetes: `>=1.34.0-0`
 | config.existingConfigMap | string | `""` | REQUIRED: name of a ConfigMap holding your gatus config file(s) (templated, so a release-derived name works). |
 | config.items | list | `[]` | ConfigMap keys to mount read-only into gatus.configPath; each `{ key, path }` mounts the ConfigMap's `key` at `<configPath>/<path>` (subPath). |
 | deploymentAnnotations | object | `{}` | Annotations added to the Deployment (workload) metadata, e.g. `reloader.stakater.com/auto: "true"` so Stakater Reloader rolls the pod when the mounted config ConfigMap changes (Reloader reads the workload, not the pod). |
+| dnsConfig | object | `{}` | Pod dnsConfig (templated). Kubelet's default `ndots:5` makes the resolver walk the pod's DNS search list for every probe hostname, so each check burns extra guaranteed-NXDOMAIN lookups; when an endpoint template sets `client.dns-resolver`, that walk goes to the external resolver and leaks internal `<namespace>.svc.cluster.local` names to it. Setting `ndots: "1"` (example below) makes external hostnames resolve directly. |
+| dnsPolicy | string | `""` | Pod dnsPolicy (templated); empty leaves it to Kubernetes (ClusterFirst). Only needed alongside `dnsConfig` overrides that require a specific policy (e.g. `None`). |
 | fullnameOverride | string | `""` | Override the full release name. |
 | gatus.configPath | string | `"/config"` | Directory gatus reads (GATUS_CONFIG_PATH). The shared volume is mounted here; the sidecar writes its generated YAML here and the BYO ConfigMap files are overlaid on top. The chart always sets GATUS_CONFIG_PATH to this. |
 | gatus.delayStartSeconds | string | `""` | Delay gatus startup by N seconds (GATUS_DELAY_START_SECONDS). Omitted when empty or 0. |

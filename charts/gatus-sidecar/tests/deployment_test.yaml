@@ -423,6 +423,35 @@ tests:
       - notExists:
           path: spec.template.spec.containers[0].startupProbe
 
+  - it: omits dnsPolicy and dnsConfig by default
+    template: deployment.tpl
+    asserts:
+      - notExists:
+          path: spec.template.spec.dnsPolicy
+      - notExists:
+          path: spec.template.spec.dnsConfig
+
+  # ndots:1 keeps client.dns-resolver endpoints from walking the cluster DNS
+  # search list against the external resolver.
+  - it: sets dnsPolicy and dnsConfig when configured
+    template: deployment.tpl
+    set:
+      dnsPolicy: ClusterFirst
+      dnsConfig:
+        options:
+          - name: ndots
+            value: "1"
+    asserts:
+      - equal:
+          path: spec.template.spec.dnsPolicy
+          value: ClusterFirst
+      - equal:
+          path: spec.template.spec.dnsConfig.options[0].name
+          value: ndots
+      - equal:
+          path: spec.template.spec.dnsConfig.options[0].value
+          value: "1"
+
   - it: sets priorityClassName, grace, and a startup probe when configured
     template: deployment.tpl
     set:
