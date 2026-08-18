@@ -41,6 +41,16 @@ spec:
       {{- with .Values.priorityClassName }}
       priorityClassName: {{ tpl . $ | quote }}
       {{- end }}
+      {{- with .Values.dnsPolicy }}
+      dnsPolicy: {{ tpl . $ | quote }}
+      {{- end }}
+      {{- with .Values.dnsConfig }}
+      # Typically ndots:1 so external probe hostnames skip the cluster DNS search
+      # list; with client.dns-resolver the NXDOMAIN walk would otherwise hit the
+      # external resolver and leak internal names to it.
+      dnsConfig:
+        {{- tpl (toYaml .) $ | nindent 8 }}
+      {{- end }}
       terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
       securityContext:
         {{- tpl (toYaml .Values.podSecurityContext) $ | nindent 8 }}

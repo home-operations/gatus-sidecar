@@ -35,6 +35,18 @@
       "title": "deploymentAnnotations",
       "type": "object"
     },
+    "dnsConfig": {
+      "description": "Pod dnsConfig (templated). Kubelet's default `ndots:5` makes the resolver walk the pod's DNS search list for every probe hostname, so each check burns extra guaranteed-NXDOMAIN lookups; when an endpoint template sets `client.dns-resolver`, that walk goes to the external resolver and leaks internal `\u003cnamespace\u003e.svc.cluster.local` names to it. Setting `ndots: \"1\"` (example below) makes external hostnames resolve directly.",
+      "required": [],
+      "title": "dnsConfig",
+      "type": "object"
+    },
+    "dnsPolicy": {
+      "default": "",
+      "description": "Pod dnsPolicy (templated); empty leaves it to Kubernetes (ClusterFirst). Only needed alongside `dnsConfig` overrides that require a specific policy (e.g. `None`).",
+      "title": "dnsPolicy",
+      "type": "string"
+    },
     "fullnameOverride": {
       "default": "",
       "description": "Override the full release name.",
