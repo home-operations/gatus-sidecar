@@ -53,6 +53,66 @@
   documented annotation behavior, URL-derivation rules, and the new prefix /
   multi-value-filter / log-level flags.
 
+## [0.4.1](https://github.com/home-operations/gatus-sidecar/compare/0.4.0...0.4.1) (2026-08-18)
+
+
+### Features
+
+* **chart:** expose pod dnsPolicy and dnsConfig ([#169](https://github.com/home-operations/gatus-sidecar/issues/169)) ([f5aefc3](https://github.com/home-operations/gatus-sidecar/commit/f5aefc3403eef9e031e53c020d7944254e144b95))
+
+
+### Bug Fixes
+
+* **ci:** fail the merge gate on cancelled jobs, and key the lint cache on the toolchain ([#144](https://github.com/home-operations/gatus-sidecar/issues/144)) ([e054cd5](https://github.com/home-operations/gatus-sidecar/commit/e054cd5d08c0a9b96bdf5054f62ac102f46a44cd))
+* **go:** update module go (1.26.4 → 1.26.5) ([#155](https://github.com/home-operations/gatus-sidecar/issues/155)) ([78207d4](https://github.com/home-operations/gatus-sidecar/commit/78207d498f7fb6d3d551cabe1cb099ee0f1dc2cb))
+
+
+### Documentation
+
+* add AGENTS.md with Go conventions ([#148](https://github.com/home-operations/gatus-sidecar/issues/148)) ([3dfda7c](https://github.com/home-operations/gatus-sidecar/commit/3dfda7c3cb54afc271d0b03729fab31c12488492))
+* point the CI badge at ci.yaml ([#134](https://github.com/home-operations/gatus-sidecar/issues/134)) ([71531e6](https://github.com/home-operations/gatus-sidecar/commit/71531e616e7dec7340545cdd5343073f5861a73c))
+
+
+### Build System
+
+* **mise:** add actionlint and refresh the lockfile ([#136](https://github.com/home-operations/gatus-sidecar/issues/136)) ([831c5a4](https://github.com/home-operations/gatus-sidecar/commit/831c5a4b9a36524df8178fdbae1c72ca35c3b635))
+
+
+### Continuous Integration
+
+* gate pull requests on a single Build Success check ([#133](https://github.com/home-operations/gatus-sidecar/issues/133)) ([73dad7a](https://github.com/home-operations/gatus-sidecar/commit/73dad7a06506e150dd1c77b3487bea55ae29bfb0))
+* **github-action:** Update action actions/stale (v10.4.0 → v11.0.0) ([#145](https://github.com/home-operations/gatus-sidecar/issues/145)) ([23d5542](https://github.com/home-operations/gatus-sidecar/commit/23d5542ebff9bf7d2cda122b8ff3e5b1bbbbe9fd))
+* **github-action:** Update action docker/github-builder (v1.14.0 → v1.15.0) ([#143](https://github.com/home-operations/gatus-sidecar/issues/143)) ([12acfd2](https://github.com/home-operations/gatus-sidecar/commit/12acfd2005071b3fcbc38a7e1c505c822a44b000))
+* **github-action:** Update action docker/github-builder (v1.15.0 → v1.16.0) ([#158](https://github.com/home-operations/gatus-sidecar/issues/158)) ([f9b43af](https://github.com/home-operations/gatus-sidecar/commit/f9b43af1a78687d5662e4f0598e08cb86346a6e3))
+* **github-action:** Update action docker/login-action (v4.5.0 → v4.5.1) ([#139](https://github.com/home-operations/gatus-sidecar/issues/139)) ([8e67491](https://github.com/home-operations/gatus-sidecar/commit/8e674915f8aeca84280b280a79445b7a3c54fb78))
+* **github-action:** Update action docker/login-action (v4.5.1 → v4.5.2) ([#146](https://github.com/home-operations/gatus-sidecar/issues/146)) ([a703c3e](https://github.com/home-operations/gatus-sidecar/commit/a703c3e8ef7efa19beafddbbd1fdc447940f10c9))
+* **github-action:** Update action docker/login-action (v4.5.2 → v4.6.0) ([#149](https://github.com/home-operations/gatus-sidecar/issues/149)) ([29cd165](https://github.com/home-operations/gatus-sidecar/commit/29cd165ef87d4d9e28f9f1398fcb12b1016930b1))
+* **github-action:** Update action home-operations/.github/actions/workflow-lint (v1.0.2 → v1.0.3) ([#154](https://github.com/home-operations/gatus-sidecar/issues/154)) ([1c3100f](https://github.com/home-operations/gatus-sidecar/commit/1c3100fc3f13b502fede0e0f030857a7bfbe2050))
+* **github-action:** Update action jdx/mise-action (v4.2.1 → v4.2.2) ([#138](https://github.com/home-operations/gatus-sidecar/issues/138)) ([c1cb797](https://github.com/home-operations/gatus-sidecar/commit/c1cb7973ffae15878d5635a17f1d18b1062b8db6))
+* **github-action:** Update action jdx/mise-action (v4.2.2 → v4.2.3) ([#141](https://github.com/home-operations/gatus-sidecar/issues/141)) ([07739da](https://github.com/home-operations/gatus-sidecar/commit/07739daa8e005aa66fbecd8c3866bd3baa0e3c3e))
+* **github-action:** Update action jdx/mise-action (v4.2.3 → v4.2.4) ([#156](https://github.com/home-operations/gatus-sidecar/issues/156)) ([ad2bbef](https://github.com/home-operations/gatus-sidecar/commit/ad2bbef105cccc125a463885cef4c3a1d350dd8a))
+* **github-action:** update workflow-lint action (1.0.0 → v1.0.2) ([#151](https://github.com/home-operations/gatus-sidecar/issues/151)) ([8bf4e80](https://github.com/home-operations/gatus-sidecar/commit/8bf4e80a79e322c94416e2e5ed4a422a7ab96a0f))
+* lint workflows with the shared composite action ([#137](https://github.com/home-operations/gatus-sidecar/issues/137)) ([7110013](https://github.com/home-operations/gatus-sidecar/commit/7110013d616ae3ce3bbd4b6167de62d68c1e5d84))
+* skip release-please version-bump PRs in checks ([#132](https://github.com/home-operations/gatus-sidecar/issues/132)) ([942818b](https://github.com/home-operations/gatus-sidecar/commit/942818b7ffcb28c7c1bfd49b56541537b819ef5c))
+* wire govulncheck into mise and CI ([#153](https://github.com/home-operations/gatus-sidecar/issues/153)) ([3215692](https://github.com/home-operations/gatus-sidecar/commit/3215692f9d09a32fc338b272e18ab4aba053664e))
+
+
+### Miscellaneous Chores
+
+* **github-action:** update action jdx/mise-action (v4.2.4 → v4.2.5) ([#163](https://github.com/home-operations/gatus-sidecar/issues/163)) ([ea36762](https://github.com/home-operations/gatus-sidecar/commit/ea3676272bde58ffd6ba0e4cb4585ece80a2815c))
+* **go:** pin go directive to 1.26.0 ([#164](https://github.com/home-operations/gatus-sidecar/issues/164)) ([ef1e90f](https://github.com/home-operations/gatus-sidecar/commit/ef1e90f8623d5dd2f4e80e5be705e29d731a8d0c))
+* **mise:** prune lockfile to used platforms ([#152](https://github.com/home-operations/gatus-sidecar/issues/152)) ([985f054](https://github.com/home-operations/gatus-sidecar/commit/985f054c251c1e5e9bb16fad0df38ff9bd58a6c8))
+* **mise:** Update tool cosign (3.1.2 → 3.1.3) ([#159](https://github.com/home-operations/gatus-sidecar/issues/159)) ([bfc4666](https://github.com/home-operations/gatus-sidecar/commit/bfc46666f8fb97953fe0b9e34f65de1dc0b8caf5))
+* **mise:** update tool go (1.26.5 → 1.26.6) ([#167](https://github.com/home-operations/gatus-sidecar/issues/167)) ([91d1df7](https://github.com/home-operations/gatus-sidecar/commit/91d1df776e37ad7f5102e9bc2af04829bbd85f40))
+* **mise:** update tool go:golang.org/x/vuln/cmd/govulncheck (1.6.0 → v1.7.0) ([#162](https://github.com/home-operations/gatus-sidecar/issues/162)) ([c1c0045](https://github.com/home-operations/gatus-sidecar/commit/c1c0045e5810bdfac0d86c8fba42472e50d2be07))
+* **mise:** update tool helm (4.2.3 → 4.2.4) ([#166](https://github.com/home-operations/gatus-sidecar/issues/166)) ([54d9e8f](https://github.com/home-operations/gatus-sidecar/commit/54d9e8fbd4eaf7e224ab221a5301cdd9da9d8e70))
+* **mise:** Update tool oxfmt (0.60.0 → 0.61.0) ([#140](https://github.com/home-operations/gatus-sidecar/issues/140)) ([afe9a57](https://github.com/home-operations/gatus-sidecar/commit/afe9a57c88a4ae90563d7b74163ba6bd1f55edb1))
+* **mise:** Update tool oxfmt (0.61.0 → 0.62.0) ([#157](https://github.com/home-operations/gatus-sidecar/issues/157)) ([ce27824](https://github.com/home-operations/gatus-sidecar/commit/ce2782482b38efa0e28989021e1b18796e66bba5))
+* **mise:** Update tool oxfmt (0.62.0 → 0.63.0) ([#160](https://github.com/home-operations/gatus-sidecar/issues/160)) ([1b1a9b6](https://github.com/home-operations/gatus-sidecar/commit/1b1a9b61b61f729cc876cbe8102a1b5f0b21ed5a))
+* **mise:** Update tool zizmor (1.28.0 → 1.29.0) ([#150](https://github.com/home-operations/gatus-sidecar/issues/150)) ([c51caab](https://github.com/home-operations/gatus-sidecar/commit/c51caab6001cec057a68f972898149b335ed8b03))
+* **release-please:** standardize the release pull request title pattern ([#147](https://github.com/home-operations/gatus-sidecar/issues/147)) ([588de11](https://github.com/home-operations/gatus-sidecar/commit/588de11f34c52284212fe42ed94ffd567c845650))
+* standardize release-please changelog sections ([#142](https://github.com/home-operations/gatus-sidecar/issues/142)) ([c4779cd](https://github.com/home-operations/gatus-sidecar/commit/c4779cd1a933ace3c67a986807a7b65ce902b42f))
+
 ## [0.4.0](https://github.com/home-operations/gatus-sidecar/compare/0.3.6...0.4.0) (2026-07-25)
 
 
