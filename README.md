@@ -160,6 +160,14 @@ The `endpoint` annotation accepts any subset of a Gatus endpoint. Known keys
 are merged into typed fields; unknown keys are inlined verbatim — so
 `alerts:`, `headers:`, `body:`, etc., all work out of the box.
 
+> Endpoint `alerts:` only reference a provider by `type`. The provider itself
+> (e.g. `alerting.slack.webhook-url`) must be defined in the main Gatus
+> configuration, which the sidecar does not manage. Without it, Gatus logs
+> `Alerting is not configured` and endpoint alerts are silently ignored.
+> Provider settings such as `webhook-url` are not valid fields on an endpoint
+> alert; to vary one per endpoint, put it under the alert's
+> `provider-override:` map.
+
 | Template key                       | Behavior                                                        |
 | ---------------------------------- | --------------------------------------------------------------- |
 | `name`, `group`, `url`, `interval` | Override the field.                                             |
@@ -220,7 +228,8 @@ metadata:
     gatus.home-operations.com/endpoint: |
       alerts:
         - type: slack
-          webhook-url: https://hooks.slack.com/...
+          failure-threshold: 3
+          send-on-resolved: true
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
