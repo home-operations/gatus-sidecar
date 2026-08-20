@@ -191,7 +191,7 @@ func (c *Controller) reconcile(ctx context.Context, key string, flush bool) erro
 		return c.removeEndpoint(endpointKey, namespace, name, "not-matched", flush)
 	}
 
-	probeURL := c.resource.URL(obj)
+	probeURL := c.resource.URL(obj, c.cfg)
 	if probeURL == "" {
 		// Per-resync per-resource; common for headless Services.
 		c.log.Debug("resource has no derivable URL", "namespace", namespace, "name", name)

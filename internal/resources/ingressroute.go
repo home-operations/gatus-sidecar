@@ -41,7 +41,7 @@ func (IngressRoute) Matches(obj metav1.Object, cfg *config.Config) bool {
 	return matchesAnnotation(obj, cfg.AutoEnabled(config.KindIngressRoute), cfg)
 }
 
-func (IngressRoute) URL(obj metav1.Object) string {
+func (IngressRoute) URL(obj metav1.Object, _ *config.Config) string {
 	u, ok := obj.(*unstructured.Unstructured)
 	if !ok {
 		return ""

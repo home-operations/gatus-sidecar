@@ -56,7 +56,7 @@ func matchesEnabledAnnotation(obj metav1.Object, cfg *config.Config) bool {
 	return err == nil && enabled
 }
 
-func (f fakeResource) URL(obj metav1.Object) string {
+func (f fakeResource) URL(obj metav1.Object, _ *config.Config) string {
 	if f.urlFn != nil {
 		return f.urlFn(obj)
 	}

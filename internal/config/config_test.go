@@ -20,6 +20,9 @@ func TestLoad_Defaults(t *testing.T) {
 	if cfg.DefaultInterval != DefaultInterval {
 		t.Errorf("DefaultInterval = %v, want %v", cfg.DefaultInterval, DefaultInterval)
 	}
+	if cfg.ClusterDomain != DefaultClusterDomain {
+		t.Errorf("ClusterDomain = %q, want %q", cfg.ClusterDomain, DefaultClusterDomain)
+	}
 	if cfg.TemplateAnnotation != DefaultTemplateAnnotation {
 		t.Errorf("TemplateAnnotation = %q, want %q", cfg.TemplateAnnotation, DefaultTemplateAnnotation)
 	}
@@ -40,6 +43,7 @@ func TestLoad_AllFlags(t *testing.T) {
 		"--auto-ingress=true",
 		"--output=/tmp/foo.yaml",
 		"--default-interval=30s",
+		"--cluster-domain=k8s.example",
 		"--annotation-config=k1",
 		"--annotation-enabled=k2",
 	}
@@ -60,6 +64,9 @@ func TestLoad_AllFlags(t *testing.T) {
 	}
 	if cfg.DefaultInterval != 30*time.Second {
 		t.Errorf("DefaultInterval = %v", cfg.DefaultInterval)
+	}
+	if cfg.ClusterDomain != "k8s.example" {
+		t.Errorf("ClusterDomain = %q", cfg.ClusterDomain)
 	}
 	if cfg.TemplateAnnotation != "k1" || cfg.EnabledAnnotation != "k2" {
 		t.Errorf("annotation flags incorrect: %+v", cfg)

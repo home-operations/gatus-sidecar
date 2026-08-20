@@ -29,7 +29,7 @@ type Resource interface {
 	Matches(obj metav1.Object, cfg *config.Config) bool
 
 	// URL returns the URL gatus should probe, or "" if none can be derived.
-	URL(obj metav1.Object) string
+	URL(obj metav1.Object, cfg *config.Config) string
 
 	DefaultConditions() []string
 

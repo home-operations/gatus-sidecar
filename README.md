@@ -21,12 +21,12 @@ Maintaining a Gatus config by hand stops scaling once you have more than a handf
 
 ## Resource support
 
-| Resource         | Group / Version                | Parent (annotation inheritance) | URL shape                                 |
-| ---------------- | ------------------------------ | ------------------------------- | ----------------------------------------- |
-| **Ingress**      | `networking.k8s.io/v1`         | `IngressClass`                  | `http(s)://<host><path>`                  |
-| **Service**      | `v1`                           | —                               | `<proto>://<name>.<namespace>.svc:<port>` |
-| **HTTPRoute**    | `gateway.networking.k8s.io/v1` | `Gateway`                       | `https://<host><path>`                    |
-| **IngressRoute** | `traefik.io/v1alpha1`          | —                               | `http(s)://<host><path>`                  |
+| Resource         | Group / Version                | Parent (annotation inheritance) | URL shape                                                   |
+| ---------------- | ------------------------------ | ------------------------------- | ----------------------------------------------------------- |
+| **Ingress**      | `networking.k8s.io/v1`         | `IngressClass`                  | `http(s)://<host><path>`                                    |
+| **Service**      | `v1`                           | —                               | `<proto>://<name>.<namespace>.svc.<cluster-domain>.:<port>` |
+| **HTTPRoute**    | `gateway.networking.k8s.io/v1` | `Gateway`                       | `https://<host><path>`                                      |
+| **IngressRoute** | `traefik.io/v1alpha1`          | —                               | `http(s)://<host><path>`                                    |
 
 ## Quick start
 
@@ -138,13 +138,14 @@ Use these to disambiguate endpoints across resource kinds — Gatus rejects dupl
 
 #### Output & runtime
 
-| Flag                   | Default                              | Description                                          |
-| ---------------------- | ------------------------------------ | ---------------------------------------------------- |
-| `--output`             | `/config/gatus-sidecar.yaml`         | Destination YAML file (written atomically).          |
-| `--default-interval`   | `1m`                                 | Probe interval when not overridden by an annotation. |
-| `--annotation-config`  | `gatus.home-operations.com/endpoint` | Annotation key for YAML template overrides.          |
-| `--annotation-enabled` | `gatus.home-operations.com/enabled`  | Annotation key for the on/off gate.                  |
-| `--log-level`          | `info`                               | `debug` \| `info` \| `warn` \| `error`.              |
+| Flag                   | Default                              | Description                                           |
+| ---------------------- | ------------------------------------ | ----------------------------------------------------- |
+| `--output`             | `/config/gatus-sidecar.yaml`         | Destination YAML file (written atomically).           |
+| `--default-interval`   | `1m`                                 | Probe interval when not overridden by an annotation.  |
+| `--annotation-config`  | `gatus.home-operations.com/endpoint` | Annotation key for YAML template overrides.           |
+| `--annotation-enabled` | `gatus.home-operations.com/enabled`  | Annotation key for the on/off gate.                   |
+| `--cluster-domain`     | `cluster.local`                      | Cluster DNS domain used to qualify Service endpoints. |
+| `--log-level`          | `info`                               | `debug` \| `info` \| `warn` \| `error`.               |
 
 ### Annotations
 

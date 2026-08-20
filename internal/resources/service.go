@@ -38,14 +38,20 @@ func (Service) Matches(obj metav1.Object, cfg *config.Config) bool {
 	return matchesAnnotation(obj, cfg.AutoEnabled(config.KindService), cfg)
 }
 
-func (Service) URL(obj metav1.Object) string {
+// URL fully qualifies the in-cluster hostname and roots it with a trailing dot.
+// <service>.<namespace>.svc is not resolvable on its own; it only works when the
+// pod's search list happens to append the cluster domain. Rooting the name keeps
+// resolution to a single query whatever the pod's ndots is, and stops the bare
+// .svc form escaping to the public resolvers under ndots:1.
+func (Service) URL(obj metav1.Object, cfg *config.Config) string {
 	svc, ok := obj.(*corev1.Service)
 	if !ok || len(svc.Spec.Ports) == 0 {
 		return ""
 	}
 	port := svc.Spec.Ports[0]
 	protocol := strings.ToLower(string(cmp.Or(port.Protocol, corev1.ProtocolTCP)))
-	return fmt.Sprintf("%s://%s.%s.svc:%d", protocol, svc.Name, svc.Namespace, port.Port)
+	domain := strings.Trim(cmp.Or(cfg.ClusterDomain, config.DefaultClusterDomain), ".")
+	return fmt.Sprintf("%s://%s.%s.svc.%s.:%d", protocol, svc.Name, svc.Namespace, domain, port.Port)
 }
 
 func (Service) DefaultConditions() []string { return tcpDefaultConditions }
