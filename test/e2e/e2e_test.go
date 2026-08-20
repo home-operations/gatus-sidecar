@@ -29,10 +29,10 @@ func TestE2E(t *testing.T) {
 	t.Run("emits expected endpoints", func(t *testing.T) {
 		// Ingress path /api/v1 is captured in the URL (#33).
 		h.waitForEndpointURL("ing/e2e-ingress", "https://e2e-ingress.example.com/api/v1")
-		h.waitForEndpointURL("svc/e2e-service", "tcp://e2e-service.e2e.svc:8080")
+		h.waitForEndpointURL("svc/e2e-service", "tcp://e2e-service.e2e.svc.cluster.local.:8080")
 		// Service e2e-ingress collides with Ingress e2e-ingress by name;
 		// prefixes keep them distinct in Gatus (#59).
-		h.waitForEndpointURL("svc/e2e-ingress", "tcp://e2e-ingress.e2e.svc:9090")
+		h.waitForEndpointURL("svc/e2e-ingress", "tcp://e2e-ingress.e2e.svc.cluster.local.:9090")
 		h.waitForEndpointURL("e2e-route", "https://e2e-route.example.com")
 
 		eps := h.endpoints()

@@ -185,12 +185,12 @@ the child for per-route conditions.
 
 ### URL derivation
 
-| Resource         | Host                                     | Scheme                                                 | Path                                                           |
-| ---------------- | ---------------------------------------- | ------------------------------------------------------ | -------------------------------------------------------------- |
-| **Ingress**      | First rule with `host`                   | `https` if TLS covers that host, else `http`           | First non-`/` path under the first rule's HTTP block           |
-| **HTTPRoute**    | `spec.hostnames[0]`                      | `https` (always)                                       | First `Exact`/`PathPrefix` match value (regex matches skipped) |
-| **Service**      | `<name>.<namespace>.svc`                 | First port's protocol, lowercased (`tcp://`, `udp://`) | —                                                              |
-| **IngressRoute** | First `Host(\`...\`)`in a route's`match` | `https` if `spec.tls` is set, else `http`              | First `Path(\`...\`)`/`PathPrefix(\`...\`)`in the same`match`  |
+| Resource         | Host                                       | Scheme                                                 | Path                                                           |
+| ---------------- | ------------------------------------------ | ------------------------------------------------------ | -------------------------------------------------------------- |
+| **Ingress**      | First rule with `host`                     | `https` if TLS covers that host, else `http`           | First non-`/` path under the first rule's HTTP block           |
+| **HTTPRoute**    | `spec.hostnames[0]`                        | `https` (always)                                       | First `Exact`/`PathPrefix` match value (regex matches skipped) |
+| **Service**      | `<name>.<namespace>.svc.<cluster-domain>.` | First port's protocol, lowercased (`tcp://`, `udp://`) | —                                                              |
+| **IngressRoute** | First `Host(\`...\`)`in a route's`match`   | `https` if `spec.tls` is set, else `http`              | First `Path(\`...\`)`/`PathPrefix(\`...\`)`in the same`match`  |
 
 > Trivial paths (empty, `/`, non-rooted) are dropped so the URL stays bare.
 >
