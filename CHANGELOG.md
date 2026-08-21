@@ -53,6 +53,24 @@
   documented annotation behavior, URL-derivation rules, and the new prefix /
   multi-value-filter / log-level flags.
 
+## [0.5.0](https://github.com/home-operations/gatus-sidecar/compare/0.4.1...0.5.0) (2026-08-21)
+
+
+### ⚠ BREAKING CHANGES
+
+* **resources:** fully qualify Service endpoint hostnames ([#175](https://github.com/home-operations/gatus-sidecar/issues/175))
+
+### Bug Fixes
+
+* **chart:** keep example comments out of unrelated schema descriptions ([#170](https://github.com/home-operations/gatus-sidecar/issues/170)) ([97036e4](https://github.com/home-operations/gatus-sidecar/commit/97036e46f6d6c711dcd4279a7589e2e20aa2f838))
+* **go:** update kubernetes monorepo (v0.36.3 → v0.36.4) ([#176](https://github.com/home-operations/gatus-sidecar/issues/176)) ([0cfc3b2](https://github.com/home-operations/gatus-sidecar/commit/0cfc3b22283d8e8a4201e96ab2c6c931495c8adb))
+* **resources:** fully qualify Service endpoint hostnames ([#175](https://github.com/home-operations/gatus-sidecar/issues/175)) ([8401d11](https://github.com/home-operations/gatus-sidecar/commit/8401d1189ed68d3aa8f35ded6c67c909970e62b0))
+
+
+### Documentation
+
+* **readme:** fix invalid per-endpoint alert example and note alerting prerequisite ([#173](https://github.com/home-operations/gatus-sidecar/issues/173)) ([3952778](https://github.com/home-operations/gatus-sidecar/commit/3952778cab2b38e6a71a013289ad6649743ddf4f))
+
 ## [0.4.1](https://github.com/home-operations/gatus-sidecar/compare/0.4.0...0.4.1) (2026-08-18)
 
 
