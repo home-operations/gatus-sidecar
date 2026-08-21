@@ -31,6 +31,7 @@ func TestService_URL(t *testing.T) {
 		{"udp", makeService("dns", "kube-system", 53, corev1.ProtocolUDP), "cluster.local", "udp://dns.kube-system.svc.cluster.local.:53"},
 		{"custom cluster domain", makeService("a", "ns", 80, corev1.ProtocolTCP), "k8s.example", "tcp://a.ns.svc.k8s.example.:80"},
 		{"empty cluster domain falls back to the default", makeService("a", "ns", 80, corev1.ProtocolTCP), "", "tcp://a.ns.svc.cluster.local.:80"},
+		{"dots-only cluster domain falls back to the default", makeService("a", "ns", 80, corev1.ProtocolTCP), ".", "tcp://a.ns.svc.cluster.local.:80"},
 		{"trailing dot on the configured domain is not doubled", makeService("a", "ns", 80, corev1.ProtocolTCP), "cluster.local.", "tcp://a.ns.svc.cluster.local.:80"},
 		{"default protocol", &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{Name: "a", Namespace: "n"},

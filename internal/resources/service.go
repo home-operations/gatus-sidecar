@@ -50,7 +50,7 @@ func (Service) URL(obj metav1.Object, cfg *config.Config) string {
 	}
 	port := svc.Spec.Ports[0]
 	protocol := strings.ToLower(string(cmp.Or(port.Protocol, corev1.ProtocolTCP)))
-	domain := strings.Trim(cmp.Or(cfg.ClusterDomain, config.DefaultClusterDomain), ".")
+	domain := cmp.Or(strings.Trim(cfg.ClusterDomain, "."), config.DefaultClusterDomain)
 	return fmt.Sprintf("%s://%s.%s.svc.%s.:%d", protocol, svc.Name, svc.Namespace, domain, port.Port)
 }
 
