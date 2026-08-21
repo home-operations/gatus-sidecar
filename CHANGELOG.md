@@ -53,6 +53,13 @@
   documented annotation behavior, URL-derivation rules, and the new prefix /
   multi-value-filter / log-level flags.
 
+## [0.5.1](https://github.com/home-operations/gatus-sidecar/compare/0.5.0...0.5.1) (2026-08-21)
+
+
+### Bug Fixes
+
+* **go:** update to go 1.27.0 ([#177](https://github.com/home-operations/gatus-sidecar/issues/177)) ([a41a3cf](https://github.com/home-operations/gatus-sidecar/commit/a41a3cfeecae766a7def8d304d17471b815a58b0))
+
 ## [0.5.0](https://github.com/home-operations/gatus-sidecar/compare/0.4.1...0.5.0) (2026-08-21)
 
 
