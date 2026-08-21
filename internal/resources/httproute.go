@@ -47,7 +47,7 @@ func (HTTPRoute) Matches(obj metav1.Object, cfg *config.Config) bool {
 	return matchesAnnotation(obj, cfg.AutoEnabled(config.KindHTTPRoute), cfg)
 }
 
-func (HTTPRoute) URL(obj metav1.Object) string {
+func (HTTPRoute) URL(obj metav1.Object, _ *config.Config) string {
 	route, ok := obj.(*gatewayv1.HTTPRoute)
 	if !ok {
 		return ""

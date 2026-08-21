@@ -134,6 +134,7 @@ Kubernetes: `>=1.34.0-0`
 | serviceAccount.name | string | `""` | ServiceAccount name; generated from the release name if empty. |
 | sidecar.annotationConfig | string | `""` | Annotation key for the per-resource YAML config override (--annotation-config); empty uses the sidecar default. |
 | sidecar.annotationEnabled | string | `""` | Annotation key for enabling/disabling per-resource processing (--annotation-enabled); empty uses the sidecar default. |
+| sidecar.clusterDomain | string | `""` | Cluster DNS domain used to fully qualify generated Service endpoint hostnames (--cluster-domain); empty uses the sidecar default (cluster.local). |
 | sidecar.defaultInterval | string | `"1m"` | Default probe interval for generated endpoints (--default-interval). |
 | sidecar.enabled | bool | `true` | Run the gatus-sidecar as a native sidecar (init container with restartPolicy: Always). |
 | sidecar.extraArgs | list | `[]` | Extra raw flags appended to the sidecar args, e.g. `["--foo=bar"]`. |

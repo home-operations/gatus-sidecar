@@ -759,6 +759,12 @@
           "title": "annotationEnabled",
           "type": "string"
         },
+        "clusterDomain": {
+          "default": "",
+          "description": "Cluster DNS domain used to fully qualify generated Service endpoint hostnames (--cluster-domain); empty uses the sidecar default (cluster.local).",
+          "title": "clusterDomain",
+          "type": "string"
+        },
         "defaultInterval": {
           "default": "1m",
           "description": "Default probe interval for generated endpoints (--default-interval).",

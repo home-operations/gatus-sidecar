@@ -118,7 +118,8 @@ lands in the shared volume gatus reads.
 sidecar flag list, rendered as a YAML sequence, derived from the structured
 sidecar.* values (see internal/config/config.go for the authoritative flags).
 Always emits --output, --default-interval, --probe-paths and --log-level; emits
---namespace / --annotation-config / --annotation-enabled only when non-empty;
+--namespace / --cluster-domain / --annotation-config / --annotation-enabled only
+when non-empty;
 emits --gateway-name / --ingress-class once per list item; per kind emits
 --enable-<kind> / --auto-<kind> / --prefix-<kind> as configured; then appends
 sidecar.extraArgs verbatim.
@@ -131,6 +132,9 @@ sidecar.extraArgs verbatim.
 - --log-level={{ $s.logLevel }}
 {{- with $s.namespace }}
 - --namespace={{ . }}
+{{- end }}
+{{- with $s.clusterDomain }}
+- --cluster-domain={{ . }}
 {{- end }}
 {{- with $s.annotationConfig }}
 - --annotation-config={{ . }}

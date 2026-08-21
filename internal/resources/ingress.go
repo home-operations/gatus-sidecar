@@ -50,7 +50,7 @@ func (Ingress) Matches(obj metav1.Object, cfg *config.Config) bool {
 	return matchesAnnotation(obj, cfg.AutoEnabled(config.KindIngress), cfg)
 }
 
-func (Ingress) URL(obj metav1.Object) string {
+func (Ingress) URL(obj metav1.Object, _ *config.Config) string {
 	ing, ok := obj.(*networkingv1.Ingress)
 	if !ok {
 		return ""

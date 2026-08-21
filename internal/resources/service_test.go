@@ -22,23 +22,29 @@ func makeService(name, ns string, port int32, protocol corev1.Protocol) *corev1.
 func TestService_URL(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
-		name string
-		svc  metav1.Object
-		want string
+		name   string
+		svc    metav1.Object
+		domain string
+		want   string
 	}{
-		{"tcp", makeService("a", "ns", 8080, corev1.ProtocolTCP), "tcp://a.ns.svc:8080"},
-		{"udp", makeService("dns", "kube-system", 53, corev1.ProtocolUDP), "udp://dns.kube-system.svc:53"},
+		{"tcp", makeService("a", "ns", 8080, corev1.ProtocolTCP), "cluster.local", "tcp://a.ns.svc.cluster.local.:8080"},
+		{"udp", makeService("dns", "kube-system", 53, corev1.ProtocolUDP), "cluster.local", "udp://dns.kube-system.svc.cluster.local.:53"},
+		{"custom cluster domain", makeService("a", "ns", 80, corev1.ProtocolTCP), "k8s.example", "tcp://a.ns.svc.k8s.example.:80"},
+		{"empty cluster domain falls back to the default", makeService("a", "ns", 80, corev1.ProtocolTCP), "", "tcp://a.ns.svc.cluster.local.:80"},
+		{"dots-only cluster domain falls back to the default", makeService("a", "ns", 80, corev1.ProtocolTCP), ".", "tcp://a.ns.svc.cluster.local.:80"},
+		{"trailing dot on the configured domain is not doubled", makeService("a", "ns", 80, corev1.ProtocolTCP), "cluster.local.", "tcp://a.ns.svc.cluster.local.:80"},
 		{"default protocol", &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{Name: "a", Namespace: "n"},
 			Spec:       corev1.ServiceSpec{Ports: []corev1.ServicePort{{Port: 80}}},
-		}, "tcp://a.n.svc:80"},
-		{"no ports", &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: "a"}}, ""},
-		{"wrong type", &corev1.Pod{}, ""},
+		}, "cluster.local", "tcp://a.n.svc.cluster.local.:80"},
+		{"no ports", &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: "a"}}, "cluster.local", ""},
+		{"wrong type", &corev1.Pod{}, "cluster.local", ""},
 	}
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			if got := (Service{}).URL(tt.svc); got != tt.want {
+			cfg := &config.Config{ClusterDomain: tt.domain}
+			if got := (Service{}).URL(tt.svc, cfg); got != tt.want {
 				t.Errorf("URL() = %q, want %q", got, tt.want)
 			}
 		})
