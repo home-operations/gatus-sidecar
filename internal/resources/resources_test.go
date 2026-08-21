@@ -6,7 +6,6 @@ import (
 	"github.com/home-operations/gatus-sidecar/internal/config"
 
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
@@ -110,7 +109,7 @@ func TestHasGatusAnnotations(t *testing.T) {
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			obj := &corev1.Service{ObjectMeta: metav1.ObjectMeta{Annotations: tt.ann}}
+			obj := &corev1.Service{Annotations: tt.ann}
 			if got := hasGatusAnnotations(obj, cfg); got != tt.want {
 				t.Errorf("hasGatusAnnotations() = %v, want %v", got, tt.want)
 			}

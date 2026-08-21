@@ -17,7 +17,7 @@ import (
 
 func makeRoute(name string, hostnames []gatewayv1.Hostname, parentRefs []gatewayv1.ParentReference, annotations map[string]string) *gatewayv1.HTTPRoute {
 	return &gatewayv1.HTTPRoute{
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default", Annotations: annotations},
+		Name: name, Namespace: "default", Annotations: annotations,
 		Spec: gatewayv1.HTTPRouteSpec{
 			CommonRouteSpec: gatewayv1.CommonRouteSpec{ParentRefs: parentRefs},
 			Hostnames:       hostnames,
