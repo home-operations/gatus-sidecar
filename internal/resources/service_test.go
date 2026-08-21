@@ -12,7 +12,7 @@ import (
 
 func makeService(name, ns string, port int32, protocol corev1.Protocol) *corev1.Service {
 	return &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns},
+		Name: name, Namespace: ns,
 		Spec: corev1.ServiceSpec{
 			Ports: []corev1.ServicePort{{Port: port, Protocol: protocol}},
 		},
@@ -34,10 +34,10 @@ func TestService_URL(t *testing.T) {
 		{"dots-only cluster domain falls back to the default", makeService("a", "ns", 80, corev1.ProtocolTCP), ".", "tcp://a.ns.svc.cluster.local.:80"},
 		{"trailing dot on the configured domain is not doubled", makeService("a", "ns", 80, corev1.ProtocolTCP), "cluster.local.", "tcp://a.ns.svc.cluster.local.:80"},
 		{"default protocol", &corev1.Service{
-			ObjectMeta: metav1.ObjectMeta{Name: "a", Namespace: "n"},
-			Spec:       corev1.ServiceSpec{Ports: []corev1.ServicePort{{Port: 80}}},
+			Name: "a", Namespace: "n",
+			Spec: corev1.ServiceSpec{Ports: []corev1.ServicePort{{Port: 80}}},
 		}, "cluster.local", "tcp://a.n.svc.cluster.local.:80"},
-		{"no ports", &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: "a"}}, "cluster.local", ""},
+		{"no ports", &corev1.Service{Name: "a"}, "cluster.local", ""},
 		{"wrong type", &corev1.Pod{}, "cluster.local", ""},
 	}
 	for _, tt := range cases {

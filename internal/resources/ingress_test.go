@@ -29,11 +29,9 @@ func makeIngressWithPaths(host string, tls bool, class *string, annotations map[
 		rule.HTTP = http
 	}
 	ing := &networkingv1.Ingress{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        "ing",
-			Namespace:   "default",
-			Annotations: annotations,
-		},
+		Name:        "ing",
+		Namespace:   "default",
+		Annotations: annotations,
 		Spec: networkingv1.IngressSpec{
 			IngressClassName: class,
 			Rules:            []networkingv1.IngressRule{rule},
@@ -194,11 +192,11 @@ func TestIngressClassOf(t *testing.T) {
 		want string
 	}{
 		{"spec wins over legacy", &networkingv1.Ingress{
-			ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{legacyIngressClassAnnotation: "ignored"}},
-			Spec:       networkingv1.IngressSpec{IngressClassName: &nginx},
+			Annotations: map[string]string{legacyIngressClassAnnotation: "ignored"},
+			Spec:        networkingv1.IngressSpec{IngressClassName: &nginx},
 		}, "nginx"},
 		{"legacy fallback", &networkingv1.Ingress{
-			ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{legacyIngressClassAnnotation: "traefik"}},
+			Annotations: map[string]string{legacyIngressClassAnnotation: "traefik"},
 		}, "traefik"},
 		{"none", &networkingv1.Ingress{}, ""},
 	}
