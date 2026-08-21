@@ -167,6 +167,10 @@ tests:
       - contains:
           path: spec.template.spec.initContainers[0].args
           content: --enable-service
+      # empty clusterDomain leaves the flag to the sidecar default.
+      - notContains:
+          path: spec.template.spec.initContainers[0].args
+          content: --cluster-domain=cluster.local
       # ingress is off by default, so neither its enable nor auto flag is emitted.
       - notContains:
           path: spec.template.spec.initContainers[0].args
@@ -193,6 +197,7 @@ tests:
     template: deployment.tpl
     set:
       sidecar.namespace: monitoring
+      sidecar.clusterDomain: k8s.example
       sidecar.annotationConfig: example.com/config
       sidecar.annotationEnabled: example.com/enabled
       sidecar.gatewayNames: [gw-a, gw-b]
@@ -203,6 +208,9 @@ tests:
       - contains:
           path: spec.template.spec.initContainers[0].args
           content: --namespace=monitoring
+      - contains:
+          path: spec.template.spec.initContainers[0].args
+          content: --cluster-domain=k8s.example
       - contains:
           path: spec.template.spec.initContainers[0].args
           content: --annotation-config=example.com/config
