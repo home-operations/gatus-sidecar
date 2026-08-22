@@ -53,6 +53,15 @@
   documented annotation behavior, URL-derivation rules, and the new prefix /
   multi-value-filter / log-level flags.
 
+## [0.5.2](https://github.com/home-operations/gatus-sidecar/compare/0.5.1...0.5.2) (2026-08-22)
+
+
+### Miscellaneous Chores
+
+* **github-action:** update action docker/setup-buildx-action (v4.2.0 → v4.3.0) ([#181](https://github.com/home-operations/gatus-sidecar/issues/181)) ([b5c926d](https://github.com/home-operations/gatus-sidecar/commit/b5c926dfa4a3885ce1579f6073488cad5add805f))
+* **mise:** update tool oxfmt (0.63.0 → 0.64.0) ([#179](https://github.com/home-operations/gatus-sidecar/issues/179)) ([febe4c9](https://github.com/home-operations/gatus-sidecar/commit/febe4c9beec0d7137da038c6d79419119ae5814e))
+* **mise:** update tool yq (4.53.3 → 4.53.4) ([#180](https://github.com/home-operations/gatus-sidecar/issues/180)) ([163a5d0](https://github.com/home-operations/gatus-sidecar/commit/163a5d07930233d89db534d1b1924b3f0a051d2e))
+
 ## [0.5.1](https://github.com/home-operations/gatus-sidecar/compare/0.5.0...0.5.1) (2026-08-21)
 
 
