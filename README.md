@@ -48,8 +48,13 @@ gatus-sidecar \
 ## Deployment
 
 Run alongside Gatus, sharing a config volume. The sidecar writes
-`/config/gatus-sidecar.yaml`; configure Gatus to include it as a watched
-sub-config.
+`/config/gatus-sidecar.yaml`, which contains only `endpoints:`. Gatus has no
+include directive: by default it reads a single file, so set
+`GATUS_CONFIG_PATH` to the shared **directory**. Gatus then merges every
+`*.yaml`/`*.yml` in it (endpoint lists are appended, maps are deep-merged).
+Put the rest of your Gatus config (`alerting:`, `storage:`, `web:`, ...) in
+another file in the same directory, for example a ConfigMap mounted at
+`/config/config.yaml` with `subPath`, so it doesn't shadow the sidecar's file.
 
 ```yaml
 apiVersion: apps/v1
@@ -63,6 +68,8 @@ spec:
       containers:
         - name: gatus
           image: ghcr.io/twin/gatus:latest
+          env:
+            - { name: GATUS_CONFIG_PATH, value: /config }
           volumeMounts:
             - { name: gatus-config, mountPath: /config }
         - name: gatus-sidecar
