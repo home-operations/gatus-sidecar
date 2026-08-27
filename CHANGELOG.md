@@ -53,6 +53,32 @@
   documented annotation behavior, URL-derivation rules, and the new prefix /
   multi-value-filter / log-level flags.
 
+## [0.5.2](https://github.com/home-operations/gatus-sidecar/compare/0.5.1...0.5.2) (2026-08-27)
+
+
+### Features
+
+* **go:** update kubernetes monorepo (v0.36.4 → v0.37.0) ([#186](https://github.com/home-operations/gatus-sidecar/issues/186)) ([631d442](https://github.com/home-operations/gatus-sidecar/commit/631d4420f58108519a5977e475f0281d6513a91d))
+
+
+### Bug Fixes
+
+* drop UPX compression, packed binaries segfault (upx/upx[#18902](https://github.com/home-operations/gatus-sidecar/issues/18902)) ([#187](https://github.com/home-operations/gatus-sidecar/issues/187)) ([1648285](https://github.com/home-operations/gatus-sidecar/commit/16482850ac0d3912b53156a861137c3f4d55ea0e))
+
+
+### Documentation
+
+* **readme:** set GATUS_CONFIG_PATH so Gatus loads the sidecar file ([#185](https://github.com/home-operations/gatus-sidecar/issues/185)) ([2a0efc3](https://github.com/home-operations/gatus-sidecar/commit/2a0efc34b2941b14a3411818e8b4670bee56ca2e))
+
+
+### Miscellaneous Chores
+
+* **github-action:** update action docker/github-builder (v1.16.0 → v1.17.0) ([#184](https://github.com/home-operations/gatus-sidecar/issues/184)) ([594cb8d](https://github.com/home-operations/gatus-sidecar/commit/594cb8d050b755f86e5676ebd5b5ec936997eac0))
+* **github-action:** update action docker/setup-buildx-action (v4.2.0 → v4.3.0) ([#181](https://github.com/home-operations/gatus-sidecar/issues/181)) ([b5c926d](https://github.com/home-operations/gatus-sidecar/commit/b5c926dfa4a3885ce1579f6073488cad5add805f))
+* **mise:** update mise tools ([#183](https://github.com/home-operations/gatus-sidecar/issues/183)) ([1a0a3a8](https://github.com/home-operations/gatus-sidecar/commit/1a0a3a8a1c3ea18576fe7e9d2b6922ada3fe9f58))
+* **mise:** update tool oxfmt (0.63.0 → 0.64.0) ([#179](https://github.com/home-operations/gatus-sidecar/issues/179)) ([febe4c9](https://github.com/home-operations/gatus-sidecar/commit/febe4c9beec0d7137da038c6d79419119ae5814e))
+* **mise:** update tool yq (4.53.3 → 4.53.4) ([#180](https://github.com/home-operations/gatus-sidecar/issues/180)) ([163a5d0](https://github.com/home-operations/gatus-sidecar/commit/163a5d07930233d89db534d1b1924b3f0a051d2e))
+
 ## [0.5.1](https://github.com/home-operations/gatus-sidecar/compare/0.5.0...0.5.1) (2026-08-21)
 
 
