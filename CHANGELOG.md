@@ -53,6 +53,35 @@
   documented annotation behavior, URL-derivation rules, and the new prefix /
   multi-value-filter / log-level flags.
 
+## [0.5.3](https://github.com/home-operations/gatus-sidecar/compare/0.5.2...0.5.3) (2026-09-05)
+
+
+### Features
+
+* **container:** update image mirror.gcr.io/curlimages/curl (8.21.0 → 8.22.0) ([#194](https://github.com/home-operations/gatus-sidecar/issues/194)) ([6ce815d](https://github.com/home-operations/gatus-sidecar/commit/6ce815df648a0fbc8a19957ebab919c9c0768526))
+
+
+### Bug Fixes
+
+* **go:** update module sigs.k8s.io/gateway-api (v1.6.1 → v1.6.2) ([#196](https://github.com/home-operations/gatus-sidecar/issues/196)) ([c2fedc3](https://github.com/home-operations/gatus-sidecar/commit/c2fedc3a757dce99718817c22f1fa22ca9d34091))
+
+
+### Documentation
+
+* **agents:** derive Go version from go.mod ([3abdb0a](https://github.com/home-operations/gatus-sidecar/commit/3abdb0a9e59638c1f5cce2ade99575f3737dce73))
+
+
+### Miscellaneous Chores
+
+* **github-action:** update action jdx/mise-action (v4.2.5 → v4.3.0) ([#191](https://github.com/home-operations/gatus-sidecar/issues/191)) ([7cc09ac](https://github.com/home-operations/gatus-sidecar/commit/7cc09ac906e2744b32b57dcfbe5dff18402f1c9c))
+* **mise:** update tool aqua:dadav/helm-schema (0.23.4 → 0.23.5) ([#189](https://github.com/home-operations/gatus-sidecar/issues/189)) ([86547c5](https://github.com/home-operations/gatus-sidecar/commit/86547c52ba90b94d624a35f5f9440e86c5450204))
+* **mise:** update tool go (1.27.0 → 1.27.1) ([#198](https://github.com/home-operations/gatus-sidecar/issues/198)) ([898cb8e](https://github.com/home-operations/gatus-sidecar/commit/898cb8e457bdb12a46557348f9ada71df4e74c19))
+* **mise:** update tool golangci-lint (2.13.1 → 2.13.2) ([#192](https://github.com/home-operations/gatus-sidecar/issues/192)) ([7e0662b](https://github.com/home-operations/gatus-sidecar/commit/7e0662be75be782fa9bcfb43c02d9e4b8574a153))
+* **mise:** update tool lefthook (2.1.11 → 2.1.12) ([#193](https://github.com/home-operations/gatus-sidecar/issues/193)) ([ea83f2b](https://github.com/home-operations/gatus-sidecar/commit/ea83f2b3103ec3369c1ddfd16df7b6f659607950))
+* **mise:** update tool oxfmt (0.64.0 → 0.65.0) ([#190](https://github.com/home-operations/gatus-sidecar/issues/190)) ([6886ffb](https://github.com/home-operations/gatus-sidecar/commit/6886ffb6ef2512d2e71eb863889f8322acd7eeb7))
+* **mise:** update tool oxfmt (0.65.0 → 0.66.0) ([#197](https://github.com/home-operations/gatus-sidecar/issues/197)) ([e3fb6fe](https://github.com/home-operations/gatus-sidecar/commit/e3fb6fe6837fe67f4f960f04ed8fa9e17e3e49f5))
+* **mise:** update tool zizmor (1.29.0 → 1.30.0) ([#195](https://github.com/home-operations/gatus-sidecar/issues/195)) ([e36fae9](https://github.com/home-operations/gatus-sidecar/commit/e36fae9e5e70e655d98fa5537209284e85d24151))
+
 ## [0.5.2](https://github.com/home-operations/gatus-sidecar/compare/0.5.1...0.5.2) (2026-08-27)
 
 
