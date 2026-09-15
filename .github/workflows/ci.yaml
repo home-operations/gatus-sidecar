@@ -52,7 +52,7 @@ jobs:
       - name: Create Kind cluster
         uses: helm/kind-action@06c1ae10762d3b9c1644e7fe69596ae519e015a2 # v1.15.0
         with:
-          version: v0.27.0
+          version: v0.33.0
           cluster_name: gatus-sidecar-e2e
           config: test/e2e/kind-config.yaml
           wait: 60s
@@ -161,7 +161,7 @@ jobs:
         background: true
         uses: helm/kind-action@06c1ae10762d3b9c1644e7fe69596ae519e015a2 # v1.15.0
         with:
-          version: v0.30.0
+          version: v0.33.0
           node_image: kindest/node:v1.34.0
           cluster_name: gatus-sidecar-helm-e2e
           wait: 60s
