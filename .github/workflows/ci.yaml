@@ -33,7 +33,7 @@ jobs:
       && !(startsWith(github.head_ref, 'release-please--')
       && github.event.pull_request.head.repo.full_name == github.repository) }}
     name: Go E2E
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 15
     permissions:
       contents: read
@@ -72,7 +72,7 @@ jobs:
       ${{ !(startsWith(github.head_ref, 'release-please--')
       && github.event.pull_request.head.repo.full_name == github.repository) }}
     name: Go Lint
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     steps:
@@ -108,7 +108,7 @@ jobs:
       ${{ !(startsWith(github.head_ref, 'release-please--')
       && github.event.pull_request.head.repo.full_name == github.repository) }}
     name: Go Test
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     steps:
@@ -140,7 +140,7 @@ jobs:
       && !(startsWith(github.head_ref, 'release-please--')
       && github.event.pull_request.head.repo.full_name == github.repository) }}
     name: Helm E2E
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 15
     permissions:
       contents: read
@@ -207,7 +207,7 @@ jobs:
       ${{ !(startsWith(github.head_ref, 'release-please--')
       && github.event.pull_request.head.repo.full_name == github.repository) }}
     name: Go Vulncheck
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     steps:
@@ -230,7 +230,7 @@ jobs:
       ${{ !(startsWith(github.head_ref, 'release-please--')
       && github.event.pull_request.head.repo.full_name == github.repository) }}
     name: Helm Lint
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     steps:
@@ -253,7 +253,7 @@ jobs:
       ${{ !(startsWith(github.head_ref, 'release-please--')
       && github.event.pull_request.head.repo.full_name == github.repository) }}
     name: Helm Unittest
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     steps:
@@ -278,7 +278,7 @@ jobs:
       ${{ !(startsWith(github.head_ref, 'release-please--')
       && github.event.pull_request.head.repo.full_name == github.repository) }}
     name: Workflow Lint
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     steps:
@@ -316,7 +316,7 @@ jobs:
       - helm-lint
       - helm-unittest
       - workflow-lint
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions: {}
     steps:
       # cancelled counts as failed: !cancelled() above still runs this job when
