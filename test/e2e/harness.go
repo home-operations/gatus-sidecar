@@ -18,7 +18,6 @@ import (
 )
 
 const (
-	clusterName       = "gatus-sidecar-e2e"
 	fixtureNamespace  = "e2e"
 	fixturesPath      = "test/e2e/fixtures/manifests.yaml"
 	enabledAnnotation = "gatus.home-operations.com/enabled"
