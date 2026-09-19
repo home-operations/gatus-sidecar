@@ -16,7 +16,6 @@ import (
 )
 
 const (
-	gatusImage         = "ghcr.io/twin/gatus:latest"
 	gatusManifestPath  = "test/e2e/fixtures/gatus.yaml"
 	gatusNamespace     = "gatus"
 	gatusPodName       = "gatus"
@@ -38,9 +37,6 @@ type gatusProbe struct {
 func (h *harness) deployGatus(cfgPath string) *gatusProbe {
 	h.t.Helper()
 	h.t.Log("deploying Gatus in cluster")
-
-	h.run("docker", "pull", gatusImage)
-	h.run("kind", "load", "docker-image", gatusImage, "--name", clusterName)
 
 	// Reset namespace so reruns are deterministic.
 	h.runQuiet("kubectl", "delete", "namespace", gatusNamespace, "--ignore-not-found", "--wait=true")
