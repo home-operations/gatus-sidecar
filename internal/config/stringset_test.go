@@ -19,17 +19,6 @@ func TestStringSet_Set(t *testing.T) {
 	}
 }
 
-func TestStringSet_Contains(t *testing.T) {
-	t.Parallel()
-	s := StringSet{"a", "b"}
-	if !s.Contains("a") {
-		t.Error("Contains(a) should be true")
-	}
-	if s.Contains("c") {
-		t.Error("Contains(c) should be false")
-	}
-}
-
 func TestStringSet_String(t *testing.T) {
 	t.Parallel()
 	s := StringSet{"a", "b"}

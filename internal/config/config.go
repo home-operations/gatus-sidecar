@@ -2,6 +2,8 @@
 package config
 
 import (
+	"cmp"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -94,15 +96,17 @@ func Load(name string, args []string, errOut io.Writer) (*Config, error) {
 	logLevel := fs.String("log-level", DefaultLogLevel, "Log level: debug, info, warn, error")
 
 	if err := fs.Parse(args); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("config: %w", err)
 	}
 
 	if cfg.Output == "" {
-		return nil, fmt.Errorf("--output must not be empty")
+		return nil, errors.New("config: --output must not be empty")
 	}
 	if cfg.DefaultInterval <= 0 {
-		return nil, fmt.Errorf("--default-interval must be positive (got %s)", cfg.DefaultInterval)
+		return nil, fmt.Errorf("config: --default-interval must be positive (got %s)", cfg.DefaultInterval)
 	}
+	// Service URLs append their own root dot, so strip any the user supplied.
+	cfg.ClusterDomain = cmp.Or(strings.Trim(cfg.ClusterDomain, "."), DefaultClusterDomain)
 	lvl, err := parseLogLevel(*logLevel)
 	if err != nil {
 		return nil, err
@@ -123,7 +127,7 @@ func parseLogLevel(s string) (slog.Level, error) {
 	case "error":
 		return slog.LevelError, nil
 	default:
-		return 0, fmt.Errorf("--log-level must be one of debug|info|warn|error (got %q)", s)
+		return 0, fmt.Errorf("config: --log-level must be one of debug|info|warn|error (got %q)", s)
 	}
 }
 

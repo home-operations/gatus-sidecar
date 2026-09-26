@@ -101,7 +101,7 @@ func (h *harness) installGatewayAPI() {
 	h.kubectl(waitArgs...)
 
 	h.t.Cleanup(func() {
-		h.runQuiet("kubectl", append([]string{"delete", "crd", "--ignore-not-found"},
+		h.kubectlQuiet(append([]string{"delete", "crd", "--ignore-not-found"},
 			gatewayAPICRDs...)...)
 	})
 }
@@ -112,7 +112,7 @@ func (h *harness) applyFixtures() {
 	fixtures := filepath.Join(h.root, fixturesPath)
 	h.kubectl("apply", "-f", fixtures)
 	h.t.Cleanup(func() {
-		h.runQuiet("kubectl", "delete", "-f", fixtures, "--ignore-not-found")
+		h.kubectlQuiet("delete", "-f", fixtures, "--ignore-not-found")
 	})
 }
 
@@ -200,10 +200,10 @@ func (h *harness) run(name string, args ...string) {
 	}
 }
 
-// runQuiet swallows both output and any error — for best-effort cleanup
+// kubectlQuiet swallows both output and any error — for best-effort cleanup
 // steps that must not fail the test.
-func (*harness) runQuiet(name string, args ...string) {
-	_ = exec.Command(name, args...).Run()
+func (*harness) kubectlQuiet(args ...string) {
+	_ = exec.Command("kubectl", args...).Run()
 }
 
 func waitUntil(t *testing.T, timeout time.Duration, check func() error) {
@@ -240,6 +240,6 @@ func freeTCPPort() (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	defer l.Close()
+	defer func() { _ = l.Close() }()
 	return l.Addr().(*net.TCPAddr).Port, nil
 }

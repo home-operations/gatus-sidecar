@@ -1,6 +1,7 @@
 package gatus
 
 import (
+	"bytes"
 	"cmp"
 	"fmt"
 	"maps"
@@ -20,10 +21,10 @@ type Writer struct {
 
 	mu        sync.Mutex
 	endpoints map[string]*Endpoint
-	// dirty signals that the in-memory state has diverged from the on-disk
-	// file (either via an unflushed change or a failed flush). Cleared only
-	// when flushLocked succeeds, so a transient write failure is retried on
-	// the next flush even when the endpoint itself didn't change.
+	// dirty signals that the in-memory state may differ from the on-disk
+	// file (an unflushed change, a failed flush, or no flush yet). Cleared
+	// only when Flush succeeds, so a transient write failure is retried on
+	// the next Flush even when no endpoint changed.
 	dirty bool
 }
 
@@ -31,53 +32,34 @@ func NewWriter(path string) *Writer {
 	return &Writer{
 		path:      path,
 		endpoints: make(map[string]*Endpoint),
+		dirty:     true,
 	}
 }
 
-// Upsert stores e under key. The bool reports whether the stored value
-// changed. The file is rewritten when flush is true and either this call
-// changed something or a previous flush failed.
-func (w *Writer) Upsert(key string, e *Endpoint, flush bool) (bool, error) {
+// Upsert stores e under key and reports whether the stored value changed.
+func (w *Writer) Upsert(key string, e *Endpoint) bool {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
-	changed := false
-	if existing, ok := w.endpoints[key]; !ok || !reflect.DeepEqual(existing, e) {
-		w.endpoints[key] = e
-		w.dirty = true
-		changed = true
+	if existing, ok := w.endpoints[key]; ok && reflect.DeepEqual(existing, e) {
+		return false
 	}
-	return changed, w.flushIfDirty(flush)
+	w.endpoints[key] = e
+	w.dirty = true
+	return true
 }
 
-// Delete drops the endpoint stored under key. The bool reports whether a
-// deletion occurred. The file is rewritten when flush is true and either
-// this call removed something or a previous flush failed.
-func (w *Writer) Delete(key string, flush bool) (bool, error) {
+// Delete drops the endpoint stored under key and reports whether one existed.
+func (w *Writer) Delete(key string) bool {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
-	removed := false
-	if _, ok := w.endpoints[key]; ok {
-		delete(w.endpoints, key)
-		w.dirty = true
-		removed = true
+	if _, ok := w.endpoints[key]; !ok {
+		return false
 	}
-	return removed, w.flushIfDirty(flush)
-}
-
-// Flush forces the current state to disk.
-func (w *Writer) Flush() error {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	return w.flushLocked()
-}
-
-func (w *Writer) flushIfDirty(flush bool) error {
-	if flush && w.dirty {
-		return w.flushLocked()
-	}
-	return nil
+	delete(w.endpoints, key)
+	w.dirty = true
+	return true
 }
 
 func (w *Writer) Len() int {
@@ -86,17 +68,35 @@ func (w *Writer) Len() int {
 	return len(w.endpoints)
 }
 
-func (w *Writer) flushLocked() error {
-	endpoints := slices.SortedFunc(maps.Values(w.endpoints), func(a, b *Endpoint) int {
+// Flush writes the endpoints to disk if they changed since the last
+// successful Flush. The first call always writes, so the file exists even
+// when there are no endpoints.
+func (w *Writer) Flush() error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if !w.dirty {
+		return nil
+	}
+
+	// Stable sort over sorted keys so same-named endpoints (different
+	// namespaces or kinds) render in the same order on every flush.
+	endpoints := make([]*Endpoint, 0, len(w.endpoints))
+	for _, key := range slices.Sorted(maps.Keys(w.endpoints)) {
+		endpoints = append(endpoints, w.endpoints[key])
+	}
+	slices.SortStableFunc(endpoints, func(a, b *Endpoint) int {
 		return cmp.Compare(a.Name, b.Name)
 	})
 
 	data, err := yaml.Marshal(map[string]any{"endpoints": endpoints})
 	if err != nil {
-		return fmt.Errorf("marshal endpoints: %w", err)
+		return fmt.Errorf("gatus: marshal endpoints: %w", err)
 	}
-	if err := writeAtomic(w.path, data, 0o644); err != nil {
-		return err
+	// Gatus reloads on any mtime change, so leave identical content untouched.
+	if cur, err := os.ReadFile(w.path); err != nil || !bytes.Equal(cur, data) {
+		if err := writeAtomic(w.path, data); err != nil {
+			return err
+		}
 	}
 	w.dirty = false
 	return nil
@@ -104,14 +104,14 @@ func (w *Writer) flushLocked() error {
 
 // writeAtomic writes data via tempfile+rename so a concurrent reader (Gatus)
 // never observes a partial file.
-func writeAtomic(path string, data []byte, mode os.FileMode) (retErr error) {
+func writeAtomic(path string, data []byte) (retErr error) {
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return fmt.Errorf("create output dir: %w", err)
+		return fmt.Errorf("gatus: create output dir: %w", err)
 	}
 	tmp, err := os.CreateTemp(dir, ".gatus-sidecar-*.tmp")
 	if err != nil {
-		return fmt.Errorf("create temp file: %w", err)
+		return fmt.Errorf("gatus: create temp file: %w", err)
 	}
 	tmpPath := tmp.Name()
 	defer func() {
@@ -122,17 +122,17 @@ func writeAtomic(path string, data []byte, mode os.FileMode) (retErr error) {
 
 	if _, err := tmp.Write(data); err != nil {
 		_ = tmp.Close()
-		return fmt.Errorf("write temp file: %w", err)
+		return fmt.Errorf("gatus: write temp file: %w", err)
 	}
-	if err := tmp.Chmod(mode); err != nil {
+	if err := tmp.Chmod(0o644); err != nil {
 		_ = tmp.Close()
-		return fmt.Errorf("chmod temp file: %w", err)
+		return fmt.Errorf("gatus: chmod temp file: %w", err)
 	}
 	if err := tmp.Close(); err != nil {
-		return fmt.Errorf("close temp file: %w", err)
+		return fmt.Errorf("gatus: close temp file: %w", err)
 	}
 	if err := os.Rename(tmpPath, path); err != nil {
-		return fmt.Errorf("rename to %s: %w", path, err)
+		return fmt.Errorf("gatus: rename to %s: %w", path, err)
 	}
 	return nil
 }

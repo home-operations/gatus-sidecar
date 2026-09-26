@@ -2,9 +2,9 @@ package k8s
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -23,38 +23,19 @@ import (
 // fakeResource is a minimal Resource implementation. Tests configure behavior
 // by setting fields; unset fields fall back to inert defaults.
 type fakeResource struct {
-	gvr            schema.GroupVersionResource
-	prefix         string
 	conditions     []string
 	guardHost      string
 	urlFn          func(metav1.Object) string
-	matchesFn      func(metav1.Object, *config.Config) bool
-	parentAnnotsFn func(context.Context, metav1.Object, Fetcher) map[string]string
+	parentAnnotsFn func(context.Context, metav1.Object, *Fetcher) (map[string]string, error)
 }
 
-func (f fakeResource) GVR() schema.GroupVersionResource                          { return f.gvr }
-func (f fakeResource) Prefix(*config.Config) string                              { return f.prefix }
+func (fakeResource) GVR() schema.GroupVersionResource                            { return testGVR }
+func (fakeResource) Kind() string                                                { return testKind }
 func (f fakeResource) DefaultConditions() []string                               { return f.conditions }
 func (f fakeResource) GuardHost(metav1.Object) string                            { return f.guardHost }
 func (fakeResource) Convert(u *unstructured.Unstructured) (metav1.Object, error) { return u, nil }
 
-func (f fakeResource) Matches(obj metav1.Object, cfg *config.Config) bool {
-	if f.matchesFn != nil {
-		return f.matchesFn(obj, cfg)
-	}
-	return true
-}
-
-// matchesEnabledAnnotation rejects objects whose enabled annotation is falsy,
-// mirroring how real resources gate on the annotation inside Matches.
-func matchesEnabledAnnotation(obj metav1.Object, cfg *config.Config) bool {
-	v, ok := obj.GetAnnotations()[cfg.EnabledAnnotation]
-	if !ok {
-		return true
-	}
-	enabled, err := strconv.ParseBool(v)
-	return err == nil && enabled
-}
+func (fakeResource) Matches(metav1.Object, *config.Config) bool { return true }
 
 func (f fakeResource) URL(obj metav1.Object, _ *config.Config) string {
 	if f.urlFn != nil {
@@ -63,22 +44,32 @@ func (f fakeResource) URL(obj metav1.Object, _ *config.Config) string {
 	return "https://example.com"
 }
 
-func (f fakeResource) ParentAnnotations(ctx context.Context, obj metav1.Object, fetcher Fetcher) map[string]string {
+func (f fakeResource) ParentAnnotations(ctx context.Context, obj metav1.Object, fetcher *Fetcher) (map[string]string, error) {
 	if f.parentAnnotsFn != nil {
 		return f.parentAnnotsFn(ctx, obj, fetcher)
 	}
-	return nil
+	return nil, nil
+}
+
+const testKind = "thing"
+
+var testGVR = schema.GroupVersionResource{Group: "test.io", Version: "v1", Resource: "things"}
+
+// testConfig runs testKind in auto mode so objects need no opt-in annotation.
+func testConfig() *config.Config {
+	return &config.Config{
+		Kinds:              map[string]*config.KindConfig{testKind: {Auto: true}},
+		DefaultInterval:    30 * time.Second,
+		TemplateAnnotation: "tpl",
+		EnabledAnnotation:  "enabled",
+	}
 }
 
 // makeUnstructured builds an *unstructured.Unstructured suitable for the fake
 // dynamic client's tracker. All test resources live in "default/thing-a".
-func makeUnstructured(gvr schema.GroupVersionResource, annotations map[string]string) *unstructured.Unstructured {
+func makeUnstructured(annotations map[string]string) *unstructured.Unstructured {
 	u := &unstructured.Unstructured{}
-	u.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   gvr.Group,
-		Version: gvr.Version,
-		Kind:    "Thing",
-	})
+	u.SetGroupVersionKind(testGVR.GroupVersion().WithKind("Thing"))
 	u.SetNamespace("default")
 	u.SetName("thing-a")
 	if annotations != nil {
@@ -87,38 +78,28 @@ func makeUnstructured(gvr schema.GroupVersionResource, annotations map[string]st
 	return u
 }
 
-// newFakeClient registers a list kind for our GVR so the dynamic informer can
+// newFakeClient registers a list kind for testGVR so the dynamic informer can
 // list it.
-func newFakeClient(gvr schema.GroupVersionResource) dynamic.Interface {
-	scheme := runtime.NewScheme()
-	gvk := schema.GroupVersionKind{Group: gvr.Group, Version: gvr.Version, Kind: "Thing"}
-	listGVK := schema.GroupVersionKind{Group: gvr.Group, Version: gvr.Version, Kind: "ThingList"}
-	scheme.AddKnownTypeWithName(gvk, &unstructured.Unstructured{})
-	scheme.AddKnownTypeWithName(listGVK, &unstructured.UnstructuredList{})
-	listKinds := map[schema.GroupVersionResource]string{gvr: "ThingList"}
-	return fake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds)
+func newFakeClient() dynamic.Interface {
+	return fake.NewSimpleDynamicClientWithCustomListKinds(runtime.NewScheme(),
+		map[schema.GroupVersionResource]string{testGVR: "ThingList"})
 }
 
-func seed(t *testing.T, client dynamic.Interface, gvr schema.GroupVersionResource, obj *unstructured.Unstructured) {
+func seed(t *testing.T, client dynamic.Interface, obj *unstructured.Unstructured) {
 	t.Helper()
-	if _, err := client.Resource(gvr).Namespace(obj.GetNamespace()).Create(context.Background(), obj, metav1.CreateOptions{}); err != nil {
+	if _, err := client.Resource(testGVR).Namespace(obj.GetNamespace()).Create(context.Background(), obj, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
 }
 
 func TestController_ReconcileAddsAndDeletesEndpoint(t *testing.T) {
-	gvr := schema.GroupVersionResource{Group: "test.io", Version: "v1", Resource: "things"}
-	client := newFakeClient(gvr)
-	seed(t, client, gvr, makeUnstructured(gvr, nil))
+	client := newFakeClient()
+	seed(t, client, makeUnstructured(nil))
 
-	cfg := &config.Config{
-		DefaultInterval:    30 * time.Second,
-		TemplateAnnotation: "tpl",
-		EnabledAnnotation:  "enabled",
-	}
+	cfg := testConfig()
 
 	writer := gatus.NewWriter(filepath.Join(t.TempDir(), "out.yaml"))
-	c := NewController(cfg, fakeResource{gvr: gvr, urlFn: func(metav1.Object) string { return "https://thing-a.example.com" }}, writer, client)
+	c := NewController(cfg, fakeResource{urlFn: func(metav1.Object) string { return "https://thing-a.example.com" }}, writer, client)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -133,7 +114,7 @@ func TestController_ReconcileAddsAndDeletesEndpoint(t *testing.T) {
 		t.Fatalf("expected 1 endpoint, got %d", writer.Len())
 	}
 
-	if err := client.Resource(gvr).Namespace("default").Delete(ctx, "thing-a", metav1.DeleteOptions{}); err != nil {
+	if err := client.Resource(testGVR).Namespace("default").Delete(ctx, "thing-a", metav1.DeleteOptions{}); err != nil {
 		t.Fatalf("Delete: %v", err)
 	}
 	if !waitFor(t, func() bool { return writer.Len() == 0 }) {
@@ -145,18 +126,12 @@ func TestController_ReconcileAddsAndDeletesEndpoint(t *testing.T) {
 }
 
 func TestController_DisabledAnnotationRemovesEndpoint(t *testing.T) {
-	gvr := schema.GroupVersionResource{Group: "test.io", Version: "v1", Resource: "things"}
-	client := newFakeClient(gvr)
-	seed(t, client, gvr, makeUnstructured(gvr, nil))
+	client := newFakeClient()
+	seed(t, client, makeUnstructured(nil))
 
-	cfg := &config.Config{
-		DefaultInterval:    30 * time.Second,
-		TemplateAnnotation: "tpl",
-		EnabledAnnotation:  "enabled",
-	}
+	cfg := testConfig()
 	writer := gatus.NewWriter(filepath.Join(t.TempDir(), "out.yaml"))
-	// Mirror real resources: the enabled annotation gate lives in Matches.
-	c := NewController(cfg, fakeResource{gvr: gvr, matchesFn: matchesEnabledAnnotation}, writer, client)
+	c := NewController(cfg, fakeResource{}, writer, client)
 
 	ctx := t.Context()
 	go func() { _ = c.Run(ctx) }()
@@ -164,12 +139,12 @@ func TestController_DisabledAnnotationRemovesEndpoint(t *testing.T) {
 		t.Fatalf("expected 1 endpoint, got %d", writer.Len())
 	}
 
-	live, err := client.Resource(gvr).Namespace("default").Get(ctx, "thing-a", metav1.GetOptions{})
+	live, err := client.Resource(testGVR).Namespace("default").Get(ctx, "thing-a", metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
 	live.SetAnnotations(map[string]string{"enabled": "false"})
-	if _, err := client.Resource(gvr).Namespace("default").Update(ctx, live, metav1.UpdateOptions{}); err != nil {
+	if _, err := client.Resource(testGVR).Namespace("default").Update(ctx, live, metav1.UpdateOptions{}); err != nil {
 		t.Fatalf("Update: %v", err)
 	}
 
@@ -179,24 +154,19 @@ func TestController_DisabledAnnotationRemovesEndpoint(t *testing.T) {
 }
 
 func TestController_MissingURLRemovesEndpoint(t *testing.T) {
-	gvr := schema.GroupVersionResource{Group: "test.io", Version: "v1", Resource: "things"}
-	client := newFakeClient(gvr)
-	seed(t, client, gvr, makeUnstructured(gvr, nil))
-
-	cfg := &config.Config{DefaultInterval: 30 * time.Second, TemplateAnnotation: "tpl", EnabledAnnotation: "enabled"}
+	cfg := testConfig()
 	writer := gatus.NewWriter(filepath.Join(t.TempDir(), "out.yaml"))
 
 	c := NewController(cfg, fakeResource{
-		gvr:   gvr,
 		urlFn: func(metav1.Object) string { return "" },
-	}, writer, client)
+	}, writer, newFakeClient())
 
 	// Drive reconcile directly off the indexer so the assertion is
 	// deterministic — an empty URL must never produce an endpoint.
-	if err := c.informer.GetIndexer().Add(makeUnstructured(gvr, nil)); err != nil {
+	if err := c.informer.GetIndexer().Add(makeUnstructured(nil)); err != nil {
 		t.Fatalf("seed indexer: %v", err)
 	}
-	if err := c.reconcile(context.Background(), "default/thing-a", true); err != nil {
+	if err := c.reconcile(context.Background(), "default/thing-a"); err != nil {
 		t.Fatalf("reconcile: %v", err)
 	}
 	if writer.Len() != 0 {
@@ -204,11 +174,30 @@ func TestController_MissingURLRemovesEndpoint(t *testing.T) {
 	}
 }
 
-func TestMakeEndpointKey(t *testing.T) {
-	got := makeEndpointKey("a", "ns", schema.GroupVersionResource{Resource: "ingresses"})
-	want := "ingresses/ns/a"
-	if got != want {
-		t.Errorf("makeEndpointKey() = %q, want %q", got, want)
+func TestController_ParentLookupErrorKeepsEndpoint(t *testing.T) {
+	writer := gatus.NewWriter(filepath.Join(t.TempDir(), "out.yaml"))
+	var parentErr error
+	c := NewController(testConfig(), fakeResource{
+		parentAnnotsFn: func(context.Context, metav1.Object, *Fetcher) (map[string]string, error) {
+			return map[string]string{"tpl": "group: parent-group\n"}, parentErr
+		},
+	}, writer, newFakeClient())
+
+	if err := c.informer.GetIndexer().Add(makeUnstructured(nil)); err != nil {
+		t.Fatalf("seed indexer: %v", err)
+	}
+	if err := c.reconcile(t.Context(), "default/thing-a"); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+
+	parentErr = errors.New("apiserver unavailable")
+	if err := c.reconcile(t.Context(), "default/thing-a"); err == nil {
+		t.Fatal("reconcile should fail when the parent lookup fails")
+	}
+	if writer.Upsert("things/default/thing-a", &gatus.Endpoint{
+		Name: "thing-a", Group: "parent-group", URL: "https://example.com", Interval: "30s",
+	}) {
+		t.Error("a failed parent lookup should leave the inherited endpoint unchanged")
 	}
 }
 
@@ -238,22 +227,16 @@ func TestSetURLPath(t *testing.T) {
 }
 
 func TestController_AppliesPrefixToEndpointName(t *testing.T) {
-	gvr := schema.GroupVersionResource{Group: "test.io", Version: "v1", Resource: "things"}
-	client := newFakeClient(gvr)
-	seed(t, client, gvr, makeUnstructured(gvr, nil))
+	client := newFakeClient()
+	seed(t, client, makeUnstructured(nil))
 
-	cfg := &config.Config{
-		DefaultInterval:    30 * time.Second,
-		TemplateAnnotation: "tpl",
-		EnabledAnnotation:  "enabled",
-	}
+	cfg := testConfig()
+	cfg.Kinds[testKind].Prefix = "svc-"
 	outPath := filepath.Join(t.TempDir(), "out.yaml")
 	writer := gatus.NewWriter(outPath)
 
 	c := NewController(cfg, fakeResource{
-		gvr:    gvr,
-		prefix: "svc-",
-		urlFn:  func(metav1.Object) string { return "https://x" },
+		urlFn: func(metav1.Object) string { return "https://x" },
 	}, writer, client)
 
 	ctx := t.Context()
@@ -273,31 +256,25 @@ func TestController_AppliesPrefixToEndpointName(t *testing.T) {
 }
 
 func TestController_TemplateInheritanceAndGuarded(t *testing.T) {
-	gvr := schema.GroupVersionResource{Group: "test.io", Version: "v1", Resource: "things"}
-	client := newFakeClient(gvr)
+	client := newFakeClient()
 
 	// Object's own template overrides the parent's interval and turns on guarded.
-	obj := makeUnstructured(gvr, map[string]string{
+	obj := makeUnstructured(map[string]string{
 		"tpl": "interval: 10s\nguarded: true\n",
 	})
-	seed(t, client, gvr, obj)
+	seed(t, client, obj)
 
-	cfg := &config.Config{
-		DefaultInterval:    30 * time.Second,
-		TemplateAnnotation: "tpl",
-		EnabledAnnotation:  "enabled",
-	}
+	cfg := testConfig()
 	outPath := filepath.Join(t.TempDir(), "out.yaml")
 	writer := gatus.NewWriter(outPath)
 
 	r := fakeResource{
-		gvr:        gvr,
 		conditions: []string{"[STATUS] == 200"},
 		guardHost:  "guarded.example.com",
 		urlFn:      func(metav1.Object) string { return "https://thing-a.example.com" },
-		parentAnnotsFn: func(context.Context, metav1.Object, Fetcher) map[string]string {
+		parentAnnotsFn: func(context.Context, metav1.Object, *Fetcher) (map[string]string, error) {
 			// Parent supplies group; child supplies interval and guarded.
-			return map[string]string{"tpl": "group: parent-group\ninterval: 60s\n"}
+			return map[string]string{"tpl": "group: parent-group\ninterval: 60s\n"}, nil
 		},
 	}
 	c := NewController(cfg, r, writer, client)
@@ -341,25 +318,19 @@ func TestController_PathOverrideAndProbePathsFlag(t *testing.T) {
 	}
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			gvr := schema.GroupVersionResource{Group: "test.io", Version: "v1", Resource: "things"}
-			client := newFakeClient(gvr)
+			client := newFakeClient()
 			ann := map[string]string{}
 			if tt.annotation != "" {
 				ann["tpl"] = tt.annotation
 			}
-			seed(t, client, gvr, makeUnstructured(gvr, ann))
+			seed(t, client, makeUnstructured(ann))
 
-			cfg := &config.Config{
-				DefaultInterval:    30 * time.Second,
-				TemplateAnnotation: "tpl",
-				EnabledAnnotation:  "enabled",
-				ProbePaths:         tt.probePaths,
-			}
+			cfg := testConfig()
+			cfg.ProbePaths = tt.probePaths
 			outPath := filepath.Join(t.TempDir(), "out.yaml")
 			writer := gatus.NewWriter(outPath)
 
 			r := fakeResource{
-				gvr:   gvr,
 				urlFn: func(metav1.Object) string { return "https://thing-a.example.com/api" },
 			}
 			c := NewController(cfg, r, writer, client)

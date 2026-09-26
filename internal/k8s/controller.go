@@ -14,7 +14,6 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/dynamic/dynamicinformer"
 	"k8s.io/client-go/tools/cache"
@@ -33,7 +32,7 @@ type Controller struct {
 	cfg      *config.Config
 	resource Resource
 	writer   *gatus.Writer
-	fetcher  Fetcher
+	fetcher  *Fetcher
 	informer cache.SharedIndexInformer
 	queue    workqueue.TypedRateLimitingInterface[string]
 	log      *slog.Logger
@@ -64,12 +63,7 @@ func NewController(cfg *config.Config, r Resource, w *gatus.Writer, client dynam
 		UpdateFunc: func(_, obj any) {
 			c.enqueue(obj)
 		},
-		DeleteFunc: func(obj any) {
-			if tombstone, ok := obj.(cache.DeletedFinalStateUnknown); ok {
-				obj = tombstone.Obj
-			}
-			c.enqueue(obj)
-		},
+		DeleteFunc: c.enqueue,
 	})
 
 	return c
@@ -86,7 +80,7 @@ func (c *Controller) Run(ctx context.Context) error {
 	go c.informer.Run(ctx.Done())
 
 	if !cache.WaitForCacheSync(ctx.Done(), c.informer.HasSynced) {
-		return fmt.Errorf("cache sync failed for %s", c.Resource())
+		return fmt.Errorf("k8s: cache sync failed for %s", c.Resource())
 	}
 	c.log.Info("informer synced", "count", len(c.informer.GetIndexer().ListKeys()))
 
@@ -108,15 +102,15 @@ func (c *Controller) Run(ctx context.Context) error {
 	return nil
 }
 
-// initialReconcile drains the queue with flush suppressed. Failures are
-// re-queued so the worker loop logs and retries them later.
+// initialReconcile drains the queue without flushing. Failures are re-queued
+// so the worker loop logs and retries them later.
 func (c *Controller) initialReconcile(ctx context.Context) {
 	for ctx.Err() == nil && c.queue.Len() > 0 {
 		key, shutdown := c.queue.Get()
 		if shutdown {
 			return
 		}
-		if err := c.reconcile(ctx, key, false); err != nil {
+		if err := c.reconcile(ctx, key); err != nil {
 			c.queue.AddRateLimited(key)
 		} else {
 			c.queue.Forget(key)
@@ -126,7 +120,7 @@ func (c *Controller) initialReconcile(ctx context.Context) {
 }
 
 func (c *Controller) enqueue(obj any) {
-	key, err := cache.MetaNamespaceKeyFunc(obj)
+	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
 	if err != nil {
 		c.log.Error("derive cache key", "error", err)
 		return
@@ -146,7 +140,11 @@ func (c *Controller) processNext(ctx context.Context) bool {
 	}
 	defer c.queue.Done(key)
 
-	if err := c.reconcile(ctx, key, true); err != nil {
+	err := c.reconcile(ctx, key)
+	if err == nil {
+		err = c.writer.Flush()
+	}
+	if err != nil {
 		retries := c.queue.NumRequeues(key)
 		if retries < defaultMaxRetry {
 			c.log.Warn("reconcile failed, requeueing",
@@ -161,41 +159,44 @@ func (c *Controller) processNext(ctx context.Context) bool {
 }
 
 // reconcile inspects the informer cache for key and either Upserts or
-// Deletes the corresponding endpoint. flush controls whether the writer
-// rewrites the output file after this call.
-func (c *Controller) reconcile(ctx context.Context, key string, flush bool) error {
+// Deletes the corresponding endpoint in the writer. The caller flushes.
+func (c *Controller) reconcile(ctx context.Context, key string) error {
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
-		return fmt.Errorf("split key %q: %w", key, err)
+		return fmt.Errorf("k8s: split key %q: %w", key, err)
 	}
-	endpointKey := makeEndpointKey(name, namespace, c.resource.GVR())
+	// Unique across kinds: the resource plural can't contain "/".
+	endpointKey := c.Resource() + "/" + key
 
 	raw, exists, err := c.informer.GetIndexer().GetByKey(key)
 	if err != nil {
-		return fmt.Errorf("get %q: %w", key, err)
+		return fmt.Errorf("k8s: get %q: %w", key, err)
 	}
 	if !exists {
-		return c.removeEndpoint(endpointKey, namespace, name, "deleted", flush)
+		c.removeEndpoint(endpointKey, namespace, name, "deleted")
+		return nil
 	}
 
 	u, ok := raw.(*unstructured.Unstructured)
 	if !ok {
-		return fmt.Errorf("unexpected cache type %T", raw)
+		return fmt.Errorf("k8s: unexpected cache type %T", raw)
 	}
 	obj, err := c.resource.Convert(u)
 	if err != nil {
-		return fmt.Errorf("convert: %w", err)
+		return err
 	}
 
-	if !c.resource.Matches(obj, c.cfg) {
-		return c.removeEndpoint(endpointKey, namespace, name, "not-matched", flush)
+	if !c.resource.Matches(obj, c.cfg) || !matchesAnnotation(obj, c.cfg.AutoEnabled(c.resource.Kind()), c.cfg) {
+		c.removeEndpoint(endpointKey, namespace, name, "not-matched")
+		return nil
 	}
 
 	probeURL := c.resource.URL(obj, c.cfg)
 	if probeURL == "" {
 		// Per-resync per-resource; common for headless Services.
 		c.log.Debug("resource has no derivable URL", "namespace", namespace, "name", name)
-		return c.removeEndpoint(endpointKey, namespace, name, "no-url", flush)
+		c.removeEndpoint(endpointKey, namespace, name, "no-url")
+		return nil
 	}
 
 	merged, err := c.buildTemplate(ctx, obj)
@@ -211,58 +212,43 @@ func (c *Controller) reconcile(ctx context.Context, key string, flush bool) erro
 	}
 
 	e := &gatus.Endpoint{
-		Name:     c.resource.Prefix(c.cfg) + name,
+		Name:     c.cfg.Prefix(c.resource.Kind()) + name,
 		URL:      probeURL,
 		Interval: c.cfg.DefaultInterval.String(),
 	}
 	if gatus.IsGuarded(merged) {
-		if host := c.resource.GuardHost(obj); host != "" {
-			gatus.ApplyGuardedDNS(host, e)
-		}
+		gatus.ApplyGuardedDNS(c.resource.GuardHost(obj), e)
 	} else {
 		e.Conditions = c.resource.DefaultConditions()
 	}
 	e.ApplyTemplate(merged)
 
-	changed, err := c.writer.Upsert(endpointKey, e, flush)
-	if err != nil {
-		return fmt.Errorf("write after upsert: %w", err)
-	}
-	if changed {
+	if c.writer.Upsert(endpointKey, e) {
 		c.log.Info("updated endpoint", "namespace", namespace, "name", name, "url", e.URL)
 	}
 	return nil
 }
 
 func (c *Controller) buildTemplate(ctx context.Context, obj metav1.Object) (map[string]any, error) {
-	parentAnnotations := c.resource.ParentAnnotations(ctx, obj, c.fetcher)
+	parentAnnotations, err := c.resource.ParentAnnotations(ctx, obj, c.fetcher)
+	if err != nil {
+		return nil, err
+	}
 	parentTpl, err := gatus.ParseTemplate(parentAnnotations[c.cfg.TemplateAnnotation])
 	if err != nil {
-		return nil, fmt.Errorf("parent template: %w", err)
+		return nil, fmt.Errorf("k8s: parent template: %w", err)
 	}
 	objTpl, err := gatus.ParseTemplate(obj.GetAnnotations()[c.cfg.TemplateAnnotation])
 	if err != nil {
-		return nil, fmt.Errorf("object template: %w", err)
+		return nil, fmt.Errorf("k8s: object template: %w", err)
 	}
 	return gatus.MergeTemplates(parentTpl, objTpl), nil
 }
 
-func (c *Controller) removeEndpoint(key, namespace, name, reason string, flush bool) error {
-	removed, err := c.writer.Delete(key, flush)
-	if err != nil {
-		return fmt.Errorf("write after delete: %w", err)
-	}
-	if removed {
+func (c *Controller) removeEndpoint(key, namespace, name, reason string) {
+	if c.writer.Delete(key) {
 		c.log.Info("removed endpoint", "namespace", namespace, "name", name, "reason", reason)
 	}
-	return nil
-}
-
-// makeEndpointKey returns a writer key unique across resource kinds. The
-// "/" separator can't appear in any of the three components (names and
-// namespaces follow DNS rules; resource is a plural identifier).
-func makeEndpointKey(name, namespace string, gvr schema.GroupVersionResource) string {
-	return gvr.Resource + "/" + namespace + "/" + name
 }
 
 // setURLPath replaces rawURL's path with path (empty clears it). rawURL
