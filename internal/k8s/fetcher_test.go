@@ -2,6 +2,7 @@ package k8s
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -13,16 +14,12 @@ import (
 
 func TestFetcher_CachesAcrossCalls(t *testing.T) {
 	gvr := schema.GroupVersionResource{Group: "", Version: "v1", Resource: "configmaps"}
-	scheme := runtime.NewScheme()
-	scheme.AddKnownTypeWithName(gvr.GroupVersion().WithKind("ConfigMap"), &unstructured.Unstructured{})
-	scheme.AddKnownTypeWithName(gvr.GroupVersion().WithKind("ConfigMapList"), &unstructured.UnstructuredList{})
-
 	cm := &unstructured.Unstructured{}
 	cm.SetGroupVersionKind(gvr.GroupVersion().WithKind("ConfigMap"))
 	cm.SetName("cfg")
 	cm.SetNamespace("ns")
 	cm.SetAnnotations(map[string]string{"k": "v"})
-	client := fake.NewSimpleDynamicClient(scheme, cm)
+	client := fake.NewSimpleDynamicClient(runtime.NewScheme(), cm)
 
 	var gets int
 	client.PrependReactor("get", "configmaps", func(clienttesting.Action) (bool, runtime.Object, error) {
@@ -32,7 +29,10 @@ func TestFetcher_CachesAcrossCalls(t *testing.T) {
 
 	f := NewFetcher(client)
 	for range 3 {
-		ann := f.GetAnnotations(context.Background(), gvr, "ns", "cfg")
+		ann, err := f.GetAnnotations(context.Background(), gvr, "ns", "cfg")
+		if err != nil {
+			t.Fatalf("GetAnnotations: %v", err)
+		}
 		if ann["k"] != "v" {
 			t.Fatalf("annotations = %v, want {k:v}", ann)
 		}
@@ -44,10 +44,7 @@ func TestFetcher_CachesAcrossCalls(t *testing.T) {
 
 func TestFetcher_CachesNegativeLookups(t *testing.T) {
 	gvr := schema.GroupVersionResource{Group: "", Version: "v1", Resource: "configmaps"}
-	scheme := runtime.NewScheme()
-	scheme.AddKnownTypeWithName(gvr.GroupVersion().WithKind("ConfigMap"), &unstructured.Unstructured{})
-	scheme.AddKnownTypeWithName(gvr.GroupVersion().WithKind("ConfigMapList"), &unstructured.UnstructuredList{})
-	client := fake.NewSimpleDynamicClient(scheme)
+	client := fake.NewSimpleDynamicClient(runtime.NewScheme())
 
 	var gets int
 	client.PrependReactor("get", "configmaps", func(clienttesting.Action) (bool, runtime.Object, error) {
@@ -57,11 +54,36 @@ func TestFetcher_CachesNegativeLookups(t *testing.T) {
 
 	f := NewFetcher(client)
 	for range 3 {
-		if ann := f.GetAnnotations(context.Background(), gvr, "ns", "missing"); ann != nil {
+		ann, err := f.GetAnnotations(context.Background(), gvr, "ns", "missing")
+		if err != nil {
+			t.Fatalf("GetAnnotations: %v", err)
+		}
+		if ann != nil {
 			t.Fatalf("annotations = %v, want nil", ann)
 		}
 	}
 	if gets != 1 {
 		t.Errorf("apiserver Gets for missing object = %d, want 1 (negative cached)", gets)
+	}
+}
+
+func TestFetcher_DoesNotCacheTransientErrors(t *testing.T) {
+	gvr := schema.GroupVersionResource{Group: "", Version: "v1", Resource: "configmaps"}
+	client := fake.NewSimpleDynamicClient(runtime.NewScheme())
+
+	var gets int
+	client.PrependReactor("get", "configmaps", func(clienttesting.Action) (bool, runtime.Object, error) {
+		gets++
+		return true, nil, errors.New("apiserver unavailable")
+	})
+
+	f := NewFetcher(client)
+	for range 3 {
+		if _, err := f.GetAnnotations(context.Background(), gvr, "ns", "cfg"); err == nil {
+			t.Fatal("expected an error")
+		}
+	}
+	if gets != 3 {
+		t.Errorf("apiserver Gets = %d, want 3 (errors not cached)", gets)
 	}
 }

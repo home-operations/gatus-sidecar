@@ -25,17 +25,15 @@ type Service struct{}
 
 func (Service) GVR() schema.GroupVersionResource { return serviceGVR }
 
-func (Service) Prefix(cfg *config.Config) string { return cfg.Prefix(config.KindService) }
+func (Service) Kind() string { return config.KindService }
 
 func (Service) Convert(u *unstructured.Unstructured) (metav1.Object, error) {
 	return convertTo[corev1.Service](u)
 }
 
-func (Service) Matches(obj metav1.Object, cfg *config.Config) bool {
-	if _, ok := obj.(*corev1.Service); !ok {
-		return false
-	}
-	return matchesAnnotation(obj, cfg.AutoEnabled(config.KindService), cfg)
+func (Service) Matches(obj metav1.Object, _ *config.Config) bool {
+	_, ok := obj.(*corev1.Service)
+	return ok
 }
 
 // URL fully qualifies the in-cluster hostname and roots it with a trailing dot.
@@ -50,8 +48,7 @@ func (Service) URL(obj metav1.Object, cfg *config.Config) string {
 	}
 	port := svc.Spec.Ports[0]
 	protocol := strings.ToLower(string(cmp.Or(port.Protocol, corev1.ProtocolTCP)))
-	domain := cmp.Or(strings.Trim(cfg.ClusterDomain, "."), config.DefaultClusterDomain)
-	return fmt.Sprintf("%s://%s.%s.svc.%s.:%d", protocol, svc.Name, svc.Namespace, domain, port.Port)
+	return fmt.Sprintf("%s://%s.%s.svc.%s.:%d", protocol, svc.Name, svc.Namespace, cfg.ClusterDomain, port.Port)
 }
 
 func (Service) DefaultConditions() []string { return tcpDefaultConditions }
@@ -59,6 +56,6 @@ func (Service) DefaultConditions() []string { return tcpDefaultConditions }
 // Services have no meaningful guarded mode.
 func (Service) GuardHost(metav1.Object) string { return "" }
 
-func (Service) ParentAnnotations(context.Context, metav1.Object, k8s.Fetcher) map[string]string {
-	return nil
+func (Service) ParentAnnotations(context.Context, metav1.Object, *k8s.Fetcher) (map[string]string, error) {
+	return nil, nil
 }

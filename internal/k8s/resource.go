@@ -18,14 +18,14 @@ import (
 type Resource interface {
 	GVR() schema.GroupVersionResource
 
-	// Prefix is prepended to the endpoint name, e.g. "svc/" so an Ingress and
-	// a Service sharing a metadata.name produce distinct endpoints.
-	Prefix(cfg *config.Config) string
+	// Kind is the config.Kind* identifier that selects this resource's
+	// per-kind flags (auto mode, endpoint name prefix).
+	Kind() string
 
 	Convert(u *unstructured.Unstructured) (metav1.Object, error)
 
-	// Matches reports whether obj passes the per-kind filters (auto flags,
-	// gateway/ingress class, annotation gate).
+	// Matches reports whether obj passes the kind-specific filters (gateway
+	// name, ingress class). The Controller applies the annotation gate.
 	Matches(obj metav1.Object, cfg *config.Config) bool
 
 	// URL returns the URL gatus should probe, or "" if none can be derived.
@@ -39,5 +39,5 @@ type Resource interface {
 
 	// ParentAnnotations returns the parent's annotations for template
 	// inheritance (Gateway → HTTPRoute, IngressClass → Ingress) or nil.
-	ParentAnnotations(ctx context.Context, obj metav1.Object, fetcher Fetcher) map[string]string
+	ParentAnnotations(ctx context.Context, obj metav1.Object, fetcher *Fetcher) (map[string]string, error)
 }

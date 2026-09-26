@@ -25,5 +25,3 @@ func (s *StringSet) Set(v string) error {
 	*s = append(*s, v)
 	return nil
 }
-
-func (s StringSet) Contains(v string) bool { return slices.Contains(s, v) }

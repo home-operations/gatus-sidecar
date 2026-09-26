@@ -30,7 +30,7 @@ type HTTPRoute struct{}
 
 func (HTTPRoute) GVR() schema.GroupVersionResource { return httpRouteGVR }
 
-func (HTTPRoute) Prefix(cfg *config.Config) string { return cfg.Prefix(config.KindHTTPRoute) }
+func (HTTPRoute) Kind() string { return config.KindHTTPRoute }
 
 func (HTTPRoute) Convert(u *unstructured.Unstructured) (metav1.Object, error) {
 	return convertTo[gatewayv1.HTTPRoute](u)
@@ -41,10 +41,7 @@ func (HTTPRoute) Matches(obj metav1.Object, cfg *config.Config) bool {
 	if !ok {
 		return false
 	}
-	if len(cfg.GatewayNames) > 0 && !httpRouteReferencesAnyGateway(route, cfg.GatewayNames) {
-		return false
-	}
-	return matchesAnnotation(obj, cfg.AutoEnabled(config.KindHTTPRoute), cfg)
+	return len(cfg.GatewayNames) == 0 || httpRouteReferencesAnyGateway(route, cfg.GatewayNames)
 }
 
 func (HTTPRoute) URL(obj metav1.Object, _ *config.Config) string {
@@ -69,14 +66,14 @@ func (HTTPRoute) GuardHost(obj metav1.Object) string {
 	return firstHTTPRouteHostname(route)
 }
 
-func (HTTPRoute) ParentAnnotations(ctx context.Context, obj metav1.Object, fetcher k8s.Fetcher) map[string]string {
+func (HTTPRoute) ParentAnnotations(ctx context.Context, obj metav1.Object, fetcher *k8s.Fetcher) (map[string]string, error) {
 	route, ok := obj.(*gatewayv1.HTTPRoute)
 	if !ok || len(route.Spec.ParentRefs) == 0 {
-		return nil
+		return nil, nil
 	}
 	parent := route.Spec.ParentRefs[0]
 	if parent.Kind != nil && *parent.Kind != "Gateway" {
-		return nil
+		return nil, nil
 	}
 
 	gvr := gatewayGVR

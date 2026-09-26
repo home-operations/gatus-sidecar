@@ -33,7 +33,7 @@ type Ingress struct{}
 
 func (Ingress) GVR() schema.GroupVersionResource { return ingressGVR }
 
-func (Ingress) Prefix(cfg *config.Config) string { return cfg.Prefix(config.KindIngress) }
+func (Ingress) Kind() string { return config.KindIngress }
 
 func (Ingress) Convert(u *unstructured.Unstructured) (metav1.Object, error) {
 	return convertTo[networkingv1.Ingress](u)
@@ -44,10 +44,7 @@ func (Ingress) Matches(obj metav1.Object, cfg *config.Config) bool {
 	if !ok {
 		return false
 	}
-	if len(cfg.IngressClasses) > 0 && !cfg.IngressClasses.Contains(ingressClassOf(ing)) {
-		return false
-	}
-	return matchesAnnotation(obj, cfg.AutoEnabled(config.KindIngress), cfg)
+	return len(cfg.IngressClasses) == 0 || slices.Contains(cfg.IngressClasses, ingressClassOf(ing))
 }
 
 func (Ingress) URL(obj metav1.Object, _ *config.Config) string {
@@ -73,14 +70,14 @@ func (Ingress) GuardHost(obj metav1.Object) string {
 	return host
 }
 
-func (Ingress) ParentAnnotations(ctx context.Context, obj metav1.Object, fetcher k8s.Fetcher) map[string]string {
+func (Ingress) ParentAnnotations(ctx context.Context, obj metav1.Object, fetcher *k8s.Fetcher) (map[string]string, error) {
 	ing, ok := obj.(*networkingv1.Ingress)
 	if !ok {
-		return nil
+		return nil, nil
 	}
 	className := ingressClassOf(ing)
 	if className == "" {
-		return nil
+		return nil, nil
 	}
 	return fetcher.GetAnnotations(ctx, ingressClassGVR, "", className)
 }
@@ -107,7 +104,7 @@ func firstIngressHostAndPath(ing *networkingv1.Ingress) (string, string) {
 // isProbablePath rejects empty, root, and non-rooted values
 // (ImplementationSpecific paths from some controllers can be regex-like).
 func isProbablePath(p string) bool {
-	return p != "" && p != "/" && strings.HasPrefix(p, "/")
+	return p != "/" && strings.HasPrefix(p, "/")
 }
 
 func ingressUsesTLS(ing *networkingv1.Ingress, host string) bool {

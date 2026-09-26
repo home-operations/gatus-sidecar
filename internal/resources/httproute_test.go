@@ -15,9 +15,9 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
-func makeRoute(name string, hostnames []gatewayv1.Hostname, parentRefs []gatewayv1.ParentReference, annotations map[string]string) *gatewayv1.HTTPRoute {
+func makeRoute(name string, hostnames []gatewayv1.Hostname, parentRefs []gatewayv1.ParentReference) *gatewayv1.HTTPRoute {
 	return &gatewayv1.HTTPRoute{
-		Name: name, Namespace: "default", Annotations: annotations,
+		Name: name, Namespace: "default",
 		Spec: gatewayv1.HTTPRouteSpec{
 			CommonRouteSpec: gatewayv1.CommonRouteSpec{ParentRefs: parentRefs},
 			Hostnames:       hostnames,
@@ -32,7 +32,7 @@ func TestHTTPRoute_URL(t *testing.T) {
 	regex := gatewayv1.PathMatchRegularExpression
 
 	pathRoute := func(host string, ptype *gatewayv1.PathMatchType, value string) *gatewayv1.HTTPRoute {
-		r := makeRoute("a", []gatewayv1.Hostname{gatewayv1.Hostname(host)}, nil, nil)
+		r := makeRoute("a", []gatewayv1.Hostname{gatewayv1.Hostname(host)}, nil)
 		v := value
 		r.Spec.Rules = []gatewayv1.HTTPRouteRule{{
 			Matches: []gatewayv1.HTTPRouteMatch{{
@@ -47,9 +47,9 @@ func TestHTTPRoute_URL(t *testing.T) {
 		in   metav1.Object
 		want string
 	}{
-		{"https default", makeRoute("a", []gatewayv1.Hostname{"api.example.com"}, nil, nil), "https://api.example.com"},
-		{"http prefix preserved", makeRoute("a", []gatewayv1.Hostname{"http://api"}, nil, nil), "http://api"},
-		{"https prefix preserved", makeRoute("a", []gatewayv1.Hostname{"https://api"}, nil, nil), "https://api"},
+		{"https default", makeRoute("a", []gatewayv1.Hostname{"api.example.com"}, nil), "https://api.example.com"},
+		{"http prefix preserved", makeRoute("a", []gatewayv1.Hostname{"http://api"}, nil), "http://api"},
+		{"https prefix preserved", makeRoute("a", []gatewayv1.Hostname{"https://api"}, nil), "https://api"},
 		{"no hostnames", &gatewayv1.HTTPRoute{}, ""},
 		{"wrong type", &corev1.Pod{}, ""},
 		{"exact path appended", pathRoute("api.example.com", &exact, "/v1/health"), "https://api.example.com/v1/health"},
@@ -77,48 +77,39 @@ func TestHTTPRoute_Matches(t *testing.T) {
 		want bool
 	}{
 		{
-			name: "auto + no filter",
-			obj:  makeRoute("r", []gatewayv1.Hostname{"x"}, nil, nil),
-			cfg:  &config.Config{Kinds: autoEnabled(config.KindHTTPRoute)},
+			name: "no filter",
+			obj:  makeRoute("r", []gatewayv1.Hostname{"x"}, nil),
+			cfg:  &config.Config{},
 			want: true,
 		},
 		{
 			name: "gateway filter mismatch",
-			obj:  makeRoute("r", []gatewayv1.Hostname{"x"}, []gatewayv1.ParentReference{{Name: gw}}, nil),
-			cfg:  &config.Config{Kinds: autoEnabled(config.KindHTTPRoute), GatewayNames: config.StringSet{"other"}},
+			obj:  makeRoute("r", []gatewayv1.Hostname{"x"}, []gatewayv1.ParentReference{{Name: gw}}),
+			cfg:  &config.Config{GatewayNames: config.StringSet{"other"}},
 			want: false,
 		},
 		{
 			name: "gateway filter match",
-			obj:  makeRoute("r", []gatewayv1.Hostname{"x"}, []gatewayv1.ParentReference{{Name: gw}}, nil),
-			cfg:  &config.Config{Kinds: autoEnabled(config.KindHTTPRoute), GatewayNames: config.StringSet{"gw"}},
+			obj:  makeRoute("r", []gatewayv1.Hostname{"x"}, []gatewayv1.ParentReference{{Name: gw}}),
+			cfg:  &config.Config{GatewayNames: config.StringSet{"gw"}},
 			want: true,
 		},
 		{
 			name: "matches any of multiple gateway names",
-			obj:  makeRoute("r", []gatewayv1.Hostname{"x"}, []gatewayv1.ParentReference{{Name: gw}}, nil),
-			cfg:  &config.Config{Kinds: autoEnabled(config.KindHTTPRoute), GatewayNames: config.StringSet{"other", "gw", "third"}},
+			obj:  makeRoute("r", []gatewayv1.Hostname{"x"}, []gatewayv1.ParentReference{{Name: gw}}),
+			cfg:  &config.Config{GatewayNames: config.StringSet{"other", "gw", "third"}},
 			want: true,
 		},
 		{
 			name: "rejects when none of multiple gateway names match",
-			obj:  makeRoute("r", []gatewayv1.Hostname{"x"}, []gatewayv1.ParentReference{{Name: gw}}, nil),
-			cfg:  &config.Config{Kinds: autoEnabled(config.KindHTTPRoute), GatewayNames: config.StringSet{"a", "b"}},
+			obj:  makeRoute("r", []gatewayv1.Hostname{"x"}, []gatewayv1.ParentReference{{Name: gw}}),
+			cfg:  &config.Config{GatewayNames: config.StringSet{"a", "b"}},
 			want: false,
-		},
-		{
-			name: "no auto, annotation present",
-			obj:  makeRoute("r", []gatewayv1.Hostname{"x"}, nil, map[string]string{config.DefaultEnabledAnnotation: "true"}),
-			cfg: &config.Config{
-				EnabledAnnotation:  config.DefaultEnabledAnnotation,
-				TemplateAnnotation: config.DefaultTemplateAnnotation,
-			},
-			want: true,
 		},
 		{
 			name: "non-route",
 			obj:  &corev1.Pod{},
-			cfg:  &config.Config{Kinds: autoEnabled(config.KindHTTPRoute)},
+			cfg:  &config.Config{},
 			want: false,
 		},
 	}
@@ -137,7 +128,7 @@ func TestHTTPRoute_DefaultConditionsAndGuardHost(t *testing.T) {
 	if got := (HTTPRoute{}).DefaultConditions(); len(got) != 1 || got[0] != "[STATUS] == 200" {
 		t.Errorf("DefaultConditions() = %v", got)
 	}
-	if got := (HTTPRoute{}).GuardHost(makeRoute("a", []gatewayv1.Hostname{"guarded.example.com"}, nil, nil)); got != "guarded.example.com" {
+	if got := (HTTPRoute{}).GuardHost(makeRoute("a", []gatewayv1.Hostname{"guarded.example.com"}, nil)); got != "guarded.example.com" {
 		t.Errorf("GuardHost() = %q", got)
 	}
 	if got := (HTTPRoute{}).GuardHost(&corev1.Pod{}); got != "" {
@@ -147,11 +138,7 @@ func TestHTTPRoute_DefaultConditionsAndGuardHost(t *testing.T) {
 
 func TestHTTPRoute_ParentAnnotations(t *testing.T) {
 	t.Parallel()
-	scheme := runtime.NewScheme()
-	scheme.AddKnownTypeWithName(gatewayGVR.GroupVersion().WithKind("Gateway"), &unstructured.Unstructured{})
-	scheme.AddKnownTypeWithName(gatewayGVR.GroupVersion().WithKind("GatewayList"), &unstructured.UnstructuredList{})
-
-	client := fake.NewSimpleDynamicClient(scheme)
+	client := fake.NewSimpleDynamicClient(runtime.NewScheme())
 
 	gw := &unstructured.Unstructured{}
 	gw.SetAPIVersion("gateway.networking.k8s.io/v1")
@@ -163,8 +150,11 @@ func TestHTTPRoute_ParentAnnotations(t *testing.T) {
 		t.Fatalf("seed gateway: %v", err)
 	}
 
-	route := makeRoute("r", []gatewayv1.Hostname{"x"}, []gatewayv1.ParentReference{{Name: "gw"}}, nil)
-	ann := (HTTPRoute{}).ParentAnnotations(context.Background(), route, k8s.NewFetcher(client))
+	route := makeRoute("r", []gatewayv1.Hostname{"x"}, []gatewayv1.ParentReference{{Name: "gw"}})
+	ann, err := (HTTPRoute{}).ParentAnnotations(context.Background(), route, k8s.NewFetcher(client))
+	if err != nil {
+		t.Fatalf("ParentAnnotations: %v", err)
+	}
 	if ann["parent"] != "annotation" {
 		t.Errorf("got %v", ann)
 	}
@@ -174,9 +164,9 @@ func TestHTTPRoute_ParentAnnotations_NoParents(t *testing.T) {
 	t.Parallel()
 	scheme := runtime.NewScheme()
 	client := fake.NewSimpleDynamicClient(scheme)
-	route := makeRoute("r", []gatewayv1.Hostname{"x"}, nil, nil)
-	if ann := (HTTPRoute{}).ParentAnnotations(context.Background(), route, k8s.NewFetcher(client)); ann != nil {
-		t.Errorf("got %v, want nil", ann)
+	route := makeRoute("r", []gatewayv1.Hostname{"x"}, nil)
+	if ann, err := (HTTPRoute{}).ParentAnnotations(context.Background(), route, k8s.NewFetcher(client)); ann != nil || err != nil {
+		t.Errorf("got %v, %v; want nil, nil", ann, err)
 	}
 }
 
@@ -185,8 +175,8 @@ func TestHTTPRoute_ParentAnnotations_NonGatewayKind(t *testing.T) {
 	scheme := runtime.NewScheme()
 	client := fake.NewSimpleDynamicClient(scheme)
 	kind := gatewayv1.Kind("Service")
-	route := makeRoute("r", []gatewayv1.Hostname{"x"}, []gatewayv1.ParentReference{{Name: "svc", Kind: &kind}}, nil)
-	if ann := (HTTPRoute{}).ParentAnnotations(context.Background(), route, k8s.NewFetcher(client)); ann != nil {
-		t.Errorf("got %v, want nil", ann)
+	route := makeRoute("r", []gatewayv1.Hostname{"x"}, []gatewayv1.ParentReference{{Name: "svc", Kind: &kind}})
+	if ann, err := (HTTPRoute{}).ParentAnnotations(context.Background(), route, k8s.NewFetcher(client)); ann != nil || err != nil {
+		t.Errorf("got %v, %v; want nil, nil", ann, err)
 	}
 }

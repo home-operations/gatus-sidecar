@@ -31,7 +31,7 @@ func TestEndpoint_ApplyTemplate(t *testing.T) {
 			want: &Endpoint{Name: "new-name", URL: "https://new", Interval: "30s", Group: "new-group"},
 		},
 		{
-			name: "conditions from []string, []any, and string",
+			name: "conditions from []any",
 			in:   &Endpoint{Name: "a", URL: "x", Interval: "1m"},
 			tmpl: map[string]any{"conditions": []any{"[STATUS] == 200", "[RESPONSE_TIME] < 500"}},
 			want: &Endpoint{Name: "a", URL: "x", Interval: "1m", Conditions: []string{"[STATUS] == 200", "[RESPONSE_TIME] < 500"}},
