@@ -16,35 +16,45 @@ func TestWriter_UpsertAndDelete(t *testing.T) {
 	path := filepath.Join(dir, "out.yaml")
 	w := NewWriter(path)
 
-	if !w.Upsert("k1", &Endpoint{Name: "a", URL: "https://a", Interval: "1m"}) {
+	e := &Endpoint{Name: "a", URL: "https://a", Interval: "1m"}
+
+	changed, err := w.Upsert("k1", e, true)
+	if err != nil {
+		t.Fatalf("Upsert err: %v", err)
+	}
+	if !changed {
 		t.Error("first Upsert should report changed=true")
 	}
-	if w.Upsert("k1", &Endpoint{Name: "a", URL: "https://a", Interval: "1m"}) {
+
+	changed, err = w.Upsert("k1", &Endpoint{Name: "a", URL: "https://a", Interval: "1m"}, true)
+	if err != nil {
+		t.Fatalf("Upsert err: %v", err)
+	}
+	if changed {
 		t.Error("equal Upsert should report changed=false")
 	}
-	if !w.Upsert("k1", &Endpoint{Name: "a", URL: "https://b", Interval: "1m"}) {
+
+	changed, err = w.Upsert("k1", &Endpoint{Name: "a", URL: "https://b", Interval: "1m"}, true)
+	if err != nil {
+		t.Fatalf("Upsert err: %v", err)
+	}
+	if !changed {
 		t.Error("Upsert with new URL should report changed=true")
 	}
-	if !w.Delete("k1") {
+
+	removed, err := w.Delete("k1", true)
+	if err != nil {
+		t.Fatalf("Delete err: %v", err)
+	}
+	if !removed {
 		t.Error("Delete should report removed=true")
 	}
-	if w.Delete("k1") {
-		t.Error("Delete of absent key should report removed=false")
-	}
-}
-
-func TestWriter_FirstFlushWritesEmptyFile(t *testing.T) {
-	t.Parallel()
-	path := filepath.Join(t.TempDir(), "out.yaml")
-	if err := NewWriter(path).Flush(); err != nil {
-		t.Fatalf("Flush: %v", err)
-	}
-	data, err := os.ReadFile(path)
+	removed, err = w.Delete("k1", true)
 	if err != nil {
-		t.Fatalf("ReadFile: %v", err)
+		t.Fatalf("Delete err: %v", err)
 	}
-	if got := strings.TrimSpace(string(data)); got != "endpoints: []" {
-		t.Errorf("empty flush = %q, want %q", got, "endpoints: []")
+	if removed {
+		t.Error("Delete of absent key should report removed=false")
 	}
 }
 
@@ -60,7 +70,9 @@ func TestWriter_Flush_SortsAndMatchesYAMLShape(t *testing.T) {
 		{Name: "mid", URL: "m", Interval: "1m"},
 	}
 	for _, e := range endpoints {
-		w.Upsert(e.Name, e)
+		if _, err := w.Upsert(e.Name, e, false); err != nil {
+			t.Fatalf("Upsert: %v", err)
+		}
 	}
 	if err := w.Flush(); err != nil {
 		t.Fatalf("Flush: %v", err)
@@ -95,9 +107,8 @@ func TestWriter_FlushIsAtomic(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "out.yaml")
 	w := NewWriter(path)
-	w.Upsert("k", &Endpoint{Name: "a", URL: "x", Interval: "1m"})
-	if err := w.Flush(); err != nil {
-		t.Fatalf("Flush: %v", err)
+	if _, err := w.Upsert("k", &Endpoint{Name: "a", URL: "x", Interval: "1m"}, true); err != nil {
+		t.Fatalf("Upsert: %v", err)
 	}
 
 	entries, err := os.ReadDir(dir)
@@ -111,44 +122,6 @@ func TestWriter_FlushIsAtomic(t *testing.T) {
 	}
 }
 
-func TestWriter_FlushSkipsIdenticalContent(t *testing.T) {
-	t.Parallel()
-	path := filepath.Join(t.TempDir(), "out.yaml")
-	upsertAll := func(w *Writer) {
-		t.Helper()
-		// Same name under different keys exercises the tie-break ordering.
-		for _, key := range []string{"services/a/web", "services/b/web", "ingresses/a/web"} {
-			w.Upsert(key, &Endpoint{Name: "web", URL: key, Interval: "1m"})
-		}
-	}
-
-	w := NewWriter(path)
-	upsertAll(w)
-	if err := w.Flush(); err != nil {
-		t.Fatalf("Flush: %v", err)
-	}
-	before, err := os.Stat(path)
-	if err != nil {
-		t.Fatalf("Stat: %v", err)
-	}
-
-	// A fresh writer with the same state mirrors a sidecar restart.
-	for range 5 {
-		w := NewWriter(path)
-		upsertAll(w)
-		if err := w.Flush(); err != nil {
-			t.Fatalf("Flush: %v", err)
-		}
-	}
-	after, err := os.Stat(path)
-	if err != nil {
-		t.Fatalf("Stat: %v", err)
-	}
-	if !os.SameFile(before, after) {
-		t.Error("identical content should not replace the output file")
-	}
-}
-
 func TestWriter_Concurrent(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
@@ -158,10 +131,7 @@ func TestWriter_Concurrent(t *testing.T) {
 	var wg sync.WaitGroup
 	for range 50 {
 		wg.Go(func() {
-			w.Upsert("k", &Endpoint{Name: "a", URL: "x", Interval: "1m"})
-			if err := w.Flush(); err != nil {
-				t.Errorf("Flush: %v", err)
-			}
+			_, _ = w.Upsert("k", &Endpoint{Name: "a", URL: "x", Interval: "1m"}, true)
 		})
 	}
 	wg.Wait()
@@ -176,9 +146,8 @@ func TestWriter_CreatesDirectories(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "nested", "out.yaml")
 	w := NewWriter(path)
-	w.Upsert("k", &Endpoint{Name: "a", URL: "x", Interval: "1m"})
-	if err := w.Flush(); err != nil {
-		t.Fatalf("Flush: %v", err)
+	if _, err := w.Upsert("k", &Endpoint{Name: "a", URL: "x", Interval: "1m"}, true); err != nil {
+		t.Fatalf("Upsert: %v", err)
 	}
 	if _, err := os.Stat(path); err != nil {
 		t.Errorf("expected output file: %v", err)

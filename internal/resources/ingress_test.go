@@ -15,11 +15,11 @@ import (
 	"k8s.io/client-go/dynamic/fake"
 )
 
-func makeIngress(host string, tls bool, class *string) *networkingv1.Ingress {
-	return makeIngressWithPaths(host, tls, class, nil)
+func makeIngress(host string, tls bool, class *string, annotations map[string]string) *networkingv1.Ingress {
+	return makeIngressWithPaths(host, tls, class, annotations, nil)
 }
 
-func makeIngressWithPaths(host string, tls bool, class *string, paths []string) *networkingv1.Ingress {
+func makeIngressWithPaths(host string, tls bool, class *string, annotations map[string]string, paths []string) *networkingv1.Ingress {
 	rule := networkingv1.IngressRule{Host: host}
 	if len(paths) > 0 {
 		http := &networkingv1.HTTPIngressRuleValue{}
@@ -29,8 +29,9 @@ func makeIngressWithPaths(host string, tls bool, class *string, paths []string) 
 		rule.HTTP = http
 	}
 	ing := &networkingv1.Ingress{
-		Name:      "ing",
-		Namespace: "default",
+		Name:        "ing",
+		Namespace:   "default",
+		Annotations: annotations,
 		Spec: networkingv1.IngressSpec{
 			IngressClassName: class,
 			Rules:            []networkingv1.IngressRule{rule},
@@ -49,35 +50,35 @@ func TestIngress_URL(t *testing.T) {
 		in   metav1.Object
 		want string
 	}{
-		{"http", makeIngress("example.com", false, nil), "http://example.com"},
-		{"https with tls", makeIngress("example.com", true, nil), "https://example.com"},
-		{"already prefixed", makeIngress("http://x.com", false, nil), "http://x.com"},
-		{"http-prefix-not-url", makeIngress("http-debug.com", false, nil), "http://http-debug.com"},
+		{"http", makeIngress("example.com", false, nil, nil), "http://example.com"},
+		{"https with tls", makeIngress("example.com", true, nil, nil), "https://example.com"},
+		{"already prefixed", makeIngress("http://x.com", false, nil, nil), "http://x.com"},
+		{"http-prefix-not-url", makeIngress("http-debug.com", false, nil, nil), "http://http-debug.com"},
 		{"no rules", &networkingv1.Ingress{}, ""},
 		{"wrong type", &corev1.Pod{}, ""},
 		{
 			name: "first non-trivial path appended",
-			in:   makeIngressWithPaths("example.com", true, nil, []string{"/api"}),
+			in:   makeIngressWithPaths("example.com", true, nil, nil, []string{"/api"}),
 			want: "https://example.com/api",
 		},
 		{
 			name: "root path skipped",
-			in:   makeIngressWithPaths("example.com", false, nil, []string{"/"}),
+			in:   makeIngressWithPaths("example.com", false, nil, nil, []string{"/"}),
 			want: "http://example.com",
 		},
 		{
 			name: "empty path skipped",
-			in:   makeIngressWithPaths("example.com", false, nil, []string{""}),
+			in:   makeIngressWithPaths("example.com", false, nil, nil, []string{""}),
 			want: "http://example.com",
 		},
 		{
 			name: "non-rooted path skipped",
-			in:   makeIngressWithPaths("example.com", false, nil, []string{"api"}),
+			in:   makeIngressWithPaths("example.com", false, nil, nil, []string{"api"}),
 			want: "http://example.com",
 		},
 		{
 			name: "first probable path among multiple wins",
-			in:   makeIngressWithPaths("example.com", false, nil, []string{"/", "/healthz", "/api"}),
+			in:   makeIngressWithPaths("example.com", false, nil, nil, []string{"/", "/healthz", "/api"}),
 			want: "http://example.com/healthz",
 		},
 	}
@@ -94,6 +95,11 @@ func TestIngress_URL(t *testing.T) {
 func TestIngress_Matches(t *testing.T) {
 	t.Parallel()
 	nginx := "nginx"
+	cfg := &config.Config{
+		EnabledAnnotation:  config.DefaultEnabledAnnotation,
+		TemplateAnnotation: config.DefaultTemplateAnnotation,
+	}
+
 	cases := []struct {
 		name string
 		obj  metav1.Object
@@ -101,39 +107,51 @@ func TestIngress_Matches(t *testing.T) {
 		want bool
 	}{
 		{
-			name: "no class filter allows anything",
-			obj:  makeIngress("x", false, nil),
-			cfg:  &config.Config{},
+			name: "auto-mode allows anything",
+			obj:  makeIngress("x", false, nil, nil),
+			cfg:  &config.Config{Kinds: autoEnabled(config.KindIngress), EnabledAnnotation: cfg.EnabledAnnotation, TemplateAnnotation: cfg.TemplateAnnotation},
 			want: true,
 		},
 		{
+			name: "annotation gate without auto",
+			obj:  makeIngress("x", false, nil, map[string]string{cfg.EnabledAnnotation: "true"}),
+			cfg:  cfg,
+			want: true,
+		},
+		{
+			name: "no annotation, no auto = false",
+			obj:  makeIngress("x", false, nil, nil),
+			cfg:  cfg,
+			want: false,
+		},
+		{
 			name: "ingress class mismatch rejects",
-			obj:  makeIngress("x", false, &nginx),
-			cfg:  &config.Config{IngressClasses: config.StringSet{"traefik"}},
+			obj:  makeIngress("x", false, &nginx, map[string]string{cfg.EnabledAnnotation: "true"}),
+			cfg:  &config.Config{Kinds: autoEnabled(config.KindIngress), IngressClasses: config.StringSet{"traefik"}},
 			want: false,
 		},
 		{
 			name: "ingress class match accepts",
-			obj:  makeIngress("x", false, &nginx),
-			cfg:  &config.Config{IngressClasses: config.StringSet{"nginx"}},
+			obj:  makeIngress("x", false, &nginx, nil),
+			cfg:  &config.Config{Kinds: autoEnabled(config.KindIngress), IngressClasses: config.StringSet{"nginx"}},
 			want: true,
 		},
 		{
 			name: "matches any of multiple ingress classes",
-			obj:  makeIngress("x", false, &nginx),
-			cfg:  &config.Config{IngressClasses: config.StringSet{"traefik", "nginx", "haproxy"}},
+			obj:  makeIngress("x", false, &nginx, nil),
+			cfg:  &config.Config{Kinds: autoEnabled(config.KindIngress), IngressClasses: config.StringSet{"traefik", "nginx", "haproxy"}},
 			want: true,
 		},
 		{
 			name: "rejects when none of multiple ingress classes match",
-			obj:  makeIngress("x", false, &nginx),
-			cfg:  &config.Config{IngressClasses: config.StringSet{"traefik", "haproxy"}},
+			obj:  makeIngress("x", false, &nginx, nil),
+			cfg:  &config.Config{Kinds: autoEnabled(config.KindIngress), IngressClasses: config.StringSet{"traefik", "haproxy"}},
 			want: false,
 		},
 		{
 			name: "non-ingress",
 			obj:  &corev1.Pod{},
-			cfg:  &config.Config{},
+			cfg:  cfg,
 			want: false,
 		},
 	}
@@ -157,7 +175,7 @@ func TestIngress_DefaultConditions(t *testing.T) {
 
 func TestIngress_GuardHost(t *testing.T) {
 	t.Parallel()
-	if got := (Ingress{}).GuardHost(makeIngress("host.example.com", false, nil)); got != "host.example.com" {
+	if got := (Ingress{}).GuardHost(makeIngress("host.example.com", false, nil, nil)); got != "host.example.com" {
 		t.Errorf("GuardHost() = %q", got)
 	}
 	if got := (Ingress{}).GuardHost(&corev1.Pod{}); got != "" {
@@ -194,7 +212,10 @@ func TestIngressClassOf(t *testing.T) {
 
 func TestIngress_ParentAnnotations(t *testing.T) {
 	t.Parallel()
-	client := fake.NewSimpleDynamicClient(runtime.NewScheme())
+	scheme := runtime.NewScheme()
+	scheme.AddKnownTypeWithName(ingressClassGVR.GroupVersion().WithKind("IngressClass"), &unstructured.Unstructured{})
+	scheme.AddKnownTypeWithName(ingressClassGVR.GroupVersion().WithKind("IngressClassList"), &unstructured.UnstructuredList{})
+	client := fake.NewSimpleDynamicClient(scheme)
 
 	className := "nginx"
 	parent := &unstructured.Unstructured{}
@@ -206,11 +227,8 @@ func TestIngress_ParentAnnotations(t *testing.T) {
 		t.Fatalf("seed ingressclass: %v", err)
 	}
 
-	ing := makeIngress("x", false, &className)
-	ann, err := (Ingress{}).ParentAnnotations(context.Background(), ing, k8s.NewFetcher(client))
-	if err != nil {
-		t.Fatalf("ParentAnnotations: %v", err)
-	}
+	ing := makeIngress("x", false, &className, nil)
+	ann := (Ingress{}).ParentAnnotations(context.Background(), ing, k8s.NewFetcher(client))
 	if ann["parent"] != "annotation" {
 		t.Errorf("ParentAnnotations = %v, want {parent: annotation}", ann)
 	}
@@ -220,9 +238,9 @@ func TestIngress_ParentAnnotations_Missing(t *testing.T) {
 	t.Parallel()
 	scheme := runtime.NewScheme()
 	client := fake.NewSimpleDynamicClient(scheme)
-	ing := makeIngress("x", false, nil)
+	ing := makeIngress("x", false, nil, nil)
 
-	if ann, err := (Ingress{}).ParentAnnotations(context.Background(), ing, k8s.NewFetcher(client)); ann != nil || err != nil {
-		t.Errorf("ParentAnnotations(no class) = %v, %v; want nil, nil", ann, err)
+	if ann := (Ingress{}).ParentAnnotations(context.Background(), ing, k8s.NewFetcher(client)); ann != nil {
+		t.Errorf("ParentAnnotations(no class) = %v, want nil", ann)
 	}
 }

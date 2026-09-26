@@ -34,22 +34,22 @@ type gatusProbe struct {
 	pf     *exec.Cmd
 }
 
-func (h *harness) deployGatus() *gatusProbe {
+func (h *harness) deployGatus(cfgPath string) *gatusProbe {
 	h.t.Helper()
 	h.t.Log("deploying Gatus in cluster")
 
 	// Reset namespace so reruns are deterministic.
-	h.kubectlQuiet("delete", "namespace", gatusNamespace, "--ignore-not-found", "--wait=true")
+	h.runQuiet("kubectl", "delete", "namespace", gatusNamespace, "--ignore-not-found", "--wait=true")
 
 	manifest := filepath.Join(h.root, gatusManifestPath)
 	h.kubectl("apply", "-f", manifest)
 	h.t.Cleanup(func() {
-		h.kubectlQuiet("delete", "namespace", gatusNamespace, "--ignore-not-found", "--wait=false")
+		h.runQuiet("kubectl", "delete", "namespace", gatusNamespace, "--ignore-not-found", "--wait=false")
 	})
 
 	// The pod's configmap volume blocks until this exists; kubelet retries.
 	h.kubectl("-n", gatusNamespace, "create", "configmap", gatusConfigMap,
-		"--from-file=config.yaml="+h.outPath)
+		"--from-file=config.yaml="+cfgPath)
 	h.kubectl("-n", gatusNamespace, "wait", "pod/"+gatusPodName,
 		"--for=condition=Ready", "--timeout="+gatusReadyTimeout.String())
 
@@ -113,7 +113,7 @@ func (g *gatusProbe) httpOK(path string) error {
 	if err != nil {
 		return err
 	}
-	defer func() { _ = resp.Body.Close() }()
+	defer resp.Body.Close()
 	if resp.StatusCode >= 400 {
 		return fmt.Errorf("GET %s: status %d", path, resp.StatusCode)
 	}
@@ -125,7 +125,7 @@ func (g *gatusProbe) endpointNames() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = resp.Body.Close() }()
+	defer resp.Body.Close()
 	if resp.StatusCode >= 400 {
 		return nil, fmt.Errorf("status %d", resp.StatusCode)
 	}

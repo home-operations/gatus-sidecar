@@ -11,11 +11,7 @@
 // KUBECONFIG (set automatically by helm/kind-action in CI).
 package e2e
 
-import (
-	"maps"
-	"slices"
-	"testing"
-)
+import "testing"
 
 func TestE2E(t *testing.T) {
 	h := newHarness(t)
@@ -66,10 +62,13 @@ func TestE2E(t *testing.T) {
 	})
 
 	t.Run("Gatus loads and lists the generated endpoints", func(t *testing.T) {
-		want := slices.Collect(maps.Keys(h.endpoints()))
+		var want []string
+		for name := range h.endpoints() {
+			want = append(want, name)
+		}
 		if len(want) == 0 {
 			t.Fatal("no endpoints to verify against Gatus")
 		}
-		h.deployGatus().expectEndpoints(want...)
+		h.deployGatus(h.outPath).expectEndpoints(want...)
 	})
 }

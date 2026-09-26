@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 	"flag"
-	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -56,7 +55,7 @@ func run(name string, args []string) error {
 	}
 	dc, err := dynamic.NewForConfig(restCfg)
 	if err != nil {
-		return fmt.Errorf("create dynamic client: %w", err)
+		return err
 	}
 
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)

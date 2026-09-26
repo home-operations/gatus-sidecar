@@ -15,7 +15,7 @@ func RestConfig() (*rest.Config, error) {
 	if os.Getenv("KUBERNETES_SERVICE_HOST") != "" {
 		cfg, err := rest.InClusterConfig()
 		if err != nil {
-			return nil, fmt.Errorf("k8s: in-cluster config: %w", err)
+			return nil, fmt.Errorf("in-cluster config: %w", err)
 		}
 		slog.Info("loaded kubernetes config", "source", "in-cluster")
 		return cfg, nil
@@ -25,7 +25,7 @@ func RestConfig() (*rest.Config, error) {
 	overrides := &clientcmd.ConfigOverrides{}
 	cfg, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loader, overrides).ClientConfig()
 	if err != nil {
-		return nil, fmt.Errorf("k8s: load kubeconfig: %w", err)
+		return nil, fmt.Errorf("load kubeconfig: %w", err)
 	}
 	slog.Info("loaded kubernetes config", "source", "kubeconfig")
 	return cfg, nil

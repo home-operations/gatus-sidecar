@@ -27,4 +27,10 @@ func TestApplyGuardedDNS(t *testing.T) {
 			t.Errorf("ApplyGuardedDNS with empty host should not mutate: %+v", e)
 		}
 	})
+
+	t.Run("nil endpoint is no-op", func(t *testing.T) {
+		t.Parallel()
+		// just verify it doesn't panic
+		ApplyGuardedDNS("example.com", nil)
+	})
 }
