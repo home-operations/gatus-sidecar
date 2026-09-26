@@ -28,15 +28,17 @@ type IngressRoute struct{}
 
 func (IngressRoute) GVR() schema.GroupVersionResource { return ingressRouteGVR }
 
-func (IngressRoute) Kind() string { return config.KindIngressRoute }
+func (IngressRoute) Prefix(cfg *config.Config) string { return cfg.Prefix(config.KindIngressRoute) }
 
 func (IngressRoute) Convert(u *unstructured.Unstructured) (metav1.Object, error) {
 	return u, nil
 }
 
-func (IngressRoute) Matches(obj metav1.Object, _ *config.Config) bool {
-	_, ok := obj.(*unstructured.Unstructured)
-	return ok
+func (IngressRoute) Matches(obj metav1.Object, cfg *config.Config) bool {
+	if _, ok := obj.(*unstructured.Unstructured); !ok {
+		return false
+	}
+	return matchesAnnotation(obj, cfg.AutoEnabled(config.KindIngressRoute), cfg)
 }
 
 func (IngressRoute) URL(obj metav1.Object, _ *config.Config) string {
@@ -58,12 +60,16 @@ func (IngressRoute) GuardHost(obj metav1.Object) string {
 	if !ok {
 		return ""
 	}
-	host, _ := firstIngressRouteHostAndPath(u)
-	return host
+	return firstIngressRouteHostname(u)
 }
 
-func (IngressRoute) ParentAnnotations(context.Context, metav1.Object, *k8s.Fetcher) (map[string]string, error) {
-	return nil, nil
+func (IngressRoute) ParentAnnotations(context.Context, metav1.Object, k8s.Fetcher) map[string]string {
+	return nil
+}
+
+func firstIngressRouteHostname(u *unstructured.Unstructured) string {
+	host, _ := firstIngressRouteHostAndPath(u)
+	return host
 }
 
 // firstIngressRouteHostAndPath scans the route list for the first match

@@ -15,7 +15,7 @@ func ParseTemplate(value string) (map[string]any, error) {
 	}
 	var out map[string]any
 	if err := yaml.Unmarshal([]byte(value), &out); err != nil {
-		return nil, fmt.Errorf("gatus: decode template annotation: %w", err)
+		return nil, fmt.Errorf("decode template annotation: %w", err)
 	}
 	return out, nil
 }
@@ -34,10 +34,13 @@ func MergeTemplates(parent, child map[string]any) map[string]any {
 	maps.Copy(out, parent)
 
 	for key, childVal := range child {
-		pm, pok := out[key].(map[string]any)
-		cm, cok := childVal.(map[string]any)
-		if pok && cok {
-			childVal = MergeTemplates(pm, cm)
+		if parentVal, exists := out[key]; exists {
+			if pm, ok := parentVal.(map[string]any); ok {
+				if cm, ok := childVal.(map[string]any); ok {
+					out[key] = MergeTemplates(pm, cm)
+					continue
+				}
+			}
 		}
 		out[key] = childVal
 	}
@@ -53,6 +56,10 @@ func IsGuarded(data map[string]any) bool {
 // PathOverride returns the explicit path override and true when the template
 // sets a "path" string. An empty override is meaningful (forces bare host).
 func PathOverride(data map[string]any) (string, bool) {
-	s, ok := data["path"].(string)
+	raw, ok := data["path"]
+	if !ok {
+		return "", false
+	}
+	s, ok := raw.(string)
 	return s, ok
 }

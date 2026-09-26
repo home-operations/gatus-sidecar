@@ -97,32 +97,6 @@ func TestLoad_RejectsBadValues(t *testing.T) {
 	}
 }
 
-func TestLoad_ClusterDomain(t *testing.T) {
-	t.Parallel()
-	cases := []struct {
-		name string
-		arg  string
-		want string
-	}{
-		{"custom", "k8s.example", "k8s.example"},
-		{"empty falls back to the default", "", DefaultClusterDomain},
-		{"dots-only falls back to the default", ".", DefaultClusterDomain},
-		{"trailing dot is stripped", "cluster.local.", "cluster.local"},
-	}
-	for _, tt := range cases {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			cfg, err := Load("test", []string{"--cluster-domain=" + tt.arg}, &bytes.Buffer{})
-			if err != nil {
-				t.Fatalf("Load returned error: %v", err)
-			}
-			if cfg.ClusterDomain != tt.want {
-				t.Errorf("ClusterDomain = %q, want %q", cfg.ClusterDomain, tt.want)
-			}
-		})
-	}
-}
-
 func TestLoad_LogLevel(t *testing.T) {
 	t.Parallel()
 	cases := []struct {

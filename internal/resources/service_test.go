@@ -30,6 +30,9 @@ func TestService_URL(t *testing.T) {
 		{"tcp", makeService("a", "ns", 8080, corev1.ProtocolTCP), "cluster.local", "tcp://a.ns.svc.cluster.local.:8080"},
 		{"udp", makeService("dns", "kube-system", 53, corev1.ProtocolUDP), "cluster.local", "udp://dns.kube-system.svc.cluster.local.:53"},
 		{"custom cluster domain", makeService("a", "ns", 80, corev1.ProtocolTCP), "k8s.example", "tcp://a.ns.svc.k8s.example.:80"},
+		{"empty cluster domain falls back to the default", makeService("a", "ns", 80, corev1.ProtocolTCP), "", "tcp://a.ns.svc.cluster.local.:80"},
+		{"dots-only cluster domain falls back to the default", makeService("a", "ns", 80, corev1.ProtocolTCP), ".", "tcp://a.ns.svc.cluster.local.:80"},
+		{"trailing dot on the configured domain is not doubled", makeService("a", "ns", 80, corev1.ProtocolTCP), "cluster.local.", "tcp://a.ns.svc.cluster.local.:80"},
 		{"default protocol", &corev1.Service{
 			Name: "a", Namespace: "n",
 			Spec: corev1.ServiceSpec{Ports: []corev1.ServicePort{{Port: 80}}},
@@ -54,11 +57,11 @@ func TestService_DefaultConditionsAndMatches(t *testing.T) {
 		t.Errorf("DefaultConditions() = %v", got)
 	}
 
-	if !(Service{}).Matches(makeService("a", "n", 80, corev1.ProtocolTCP), &config.Config{}) {
-		t.Error("a Service should match")
+	if !(Service{}).Matches(makeService("a", "n", 80, corev1.ProtocolTCP), &config.Config{Kinds: autoEnabled(config.KindService)}) {
+		t.Error("auto mode should match")
 	}
-	if (Service{}).Matches(&corev1.Pod{}, &config.Config{}) {
-		t.Error("a non-Service should not match")
+	if (Service{}).Matches(makeService("a", "n", 80, corev1.ProtocolTCP), &config.Config{EnabledAnnotation: "x", TemplateAnnotation: "y"}) {
+		t.Error("no auto + no annotations should not match")
 	}
 }
 
@@ -67,7 +70,7 @@ func TestService_GuardHostAndParentAnnotations_NoOps(t *testing.T) {
 	if got := (Service{}).GuardHost(makeService("a", "n", 80, corev1.ProtocolTCP)); got != "" {
 		t.Errorf("GuardHost() = %q, want \"\"", got)
 	}
-	if ann, err := (Service{}).ParentAnnotations(context.Background(), makeService("a", "n", 80, corev1.ProtocolTCP), nil); ann != nil || err != nil {
-		t.Errorf("ParentAnnotations = %v, %v; want nil, nil", ann, err)
+	if ann := (Service{}).ParentAnnotations(context.Background(), makeService("a", "n", 80, corev1.ProtocolTCP), nil); ann != nil {
+		t.Errorf("ParentAnnotations should always return nil, got %v", ann)
 	}
 }

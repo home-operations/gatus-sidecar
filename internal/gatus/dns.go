@@ -11,7 +11,7 @@ const (
 
 // ApplyGuardedDNS rewrites e in place to perform a DNS lookup of host.
 func ApplyGuardedDNS(host string, e *Endpoint) {
-	if host == "" {
+	if host == "" || e == nil {
 		return
 	}
 	e.URL = GuardedProbeURL
