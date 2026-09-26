@@ -27,8 +27,8 @@ func TestWriter_GoldenOutput(t *testing.T) {
 		},
 	}
 	w.Upsert("demo", e)
-	if err := w.Flush(); err != nil {
-		t.Fatalf("Flush: %v", err)
+	if err := w.Start(); err != nil {
+		t.Fatalf("Start: %v", err)
 	}
 
 	got, err := os.ReadFile(w.path)

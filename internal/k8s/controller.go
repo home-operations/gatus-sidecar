@@ -36,6 +36,8 @@ type Controller struct {
 	informer cache.SharedIndexInformer
 	queue    workqueue.TypedRateLimitingInterface[string]
 	log      *slog.Logger
+	// synced is closed once the initial list is reconciled into the writer.
+	synced chan struct{}
 }
 
 func NewController(cfg *config.Config, r Resource, w *gatus.Writer, client dynamic.Interface) *Controller {
@@ -56,6 +58,7 @@ func NewController(cfg *config.Config, r Resource, w *gatus.Writer, client dynam
 		informer: informer,
 		queue:    queue,
 		log:      slog.With("resource", r.GVR().Resource),
+		synced:   make(chan struct{}),
 	}
 
 	_, _ = informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -74,6 +77,28 @@ func (c *Controller) Resource() string {
 	return c.resource.GVR().Resource
 }
 
+// WaitSynced blocks until every controller has synced, timeout elapses, or
+// ctx is done, and returns the resources still syncing.
+func WaitSynced(ctx context.Context, controllers []*Controller, timeout time.Duration) []string {
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	var pending []string
+	for _, c := range controllers {
+		select {
+		case <-c.synced:
+		case <-ctx.Done():
+			// select picks randomly when both are ready.
+			select {
+			case <-c.synced:
+			default:
+				pending = append(pending, c.Resource())
+			}
+		}
+	}
+	return pending
+}
+
 // Run blocks until ctx is cancelled.
 func (c *Controller) Run(ctx context.Context) error {
 	c.log.Info("controller starting")
@@ -85,11 +110,13 @@ func (c *Controller) Run(ctx context.Context) error {
 	c.log.Info("informer synced", "count", len(c.informer.GetIndexer().ListKeys()))
 
 	// Drain the queue once before workers start so the file is flushed once,
-	// not N times during initial sync.
+	// not N times during initial sync. The flush is a no-op until the writer
+	// is started; it matters for a controller that syncs after that.
 	c.initialReconcile(ctx)
 	if err := c.writer.Flush(); err != nil {
 		c.log.Error("initial flush failed", "error", err)
 	}
+	close(c.synced)
 
 	var wg sync.WaitGroup
 	for range defaultWorkers {
@@ -216,10 +243,11 @@ func (c *Controller) reconcile(ctx context.Context, key string) error {
 		URL:      probeURL,
 		Interval: c.cfg.DefaultInterval.String(),
 	}
+	// Guarded kinds swap in a DNS probe; the rest (Service) keep the defaults
+	// so the endpoint never lacks conditions, which Gatus rejects.
+	e.Conditions = c.resource.DefaultConditions()
 	if gatus.IsGuarded(merged) {
 		gatus.ApplyGuardedDNS(c.resource.GuardHost(obj), e)
-	} else {
-		e.Conditions = c.resource.DefaultConditions()
 	}
 	e.ApplyTemplate(merged)
 
@@ -230,10 +258,7 @@ func (c *Controller) reconcile(ctx context.Context, key string) error {
 }
 
 func (c *Controller) buildTemplate(ctx context.Context, obj metav1.Object) (map[string]any, error) {
-	parentAnnotations, err := c.resource.ParentAnnotations(ctx, obj, c.fetcher)
-	if err != nil {
-		return nil, err
-	}
+	parentAnnotations := c.resource.ParentAnnotations(ctx, obj, c.fetcher)
 	parentTpl, err := gatus.ParseTemplate(parentAnnotations[c.cfg.TemplateAnnotation])
 	if err != nil {
 		return nil, fmt.Errorf("k8s: parent template: %w", err)

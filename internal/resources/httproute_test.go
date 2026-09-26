@@ -151,10 +151,7 @@ func TestHTTPRoute_ParentAnnotations(t *testing.T) {
 	}
 
 	route := makeRoute("r", []gatewayv1.Hostname{"x"}, []gatewayv1.ParentReference{{Name: "gw"}})
-	ann, err := (HTTPRoute{}).ParentAnnotations(context.Background(), route, k8s.NewFetcher(client))
-	if err != nil {
-		t.Fatalf("ParentAnnotations: %v", err)
-	}
+	ann := (HTTPRoute{}).ParentAnnotations(context.Background(), route, k8s.NewFetcher(client))
 	if ann["parent"] != "annotation" {
 		t.Errorf("got %v", ann)
 	}
@@ -165,8 +162,8 @@ func TestHTTPRoute_ParentAnnotations_NoParents(t *testing.T) {
 	scheme := runtime.NewScheme()
 	client := fake.NewSimpleDynamicClient(scheme)
 	route := makeRoute("r", []gatewayv1.Hostname{"x"}, nil)
-	if ann, err := (HTTPRoute{}).ParentAnnotations(context.Background(), route, k8s.NewFetcher(client)); ann != nil || err != nil {
-		t.Errorf("got %v, %v; want nil, nil", ann, err)
+	if ann := (HTTPRoute{}).ParentAnnotations(context.Background(), route, k8s.NewFetcher(client)); ann != nil {
+		t.Errorf("got %v, want nil", ann)
 	}
 }
 
@@ -176,7 +173,7 @@ func TestHTTPRoute_ParentAnnotations_NonGatewayKind(t *testing.T) {
 	client := fake.NewSimpleDynamicClient(scheme)
 	kind := gatewayv1.Kind("Service")
 	route := makeRoute("r", []gatewayv1.Hostname{"x"}, []gatewayv1.ParentReference{{Name: "svc", Kind: &kind}})
-	if ann, err := (HTTPRoute{}).ParentAnnotations(context.Background(), route, k8s.NewFetcher(client)); ann != nil || err != nil {
-		t.Errorf("got %v, %v; want nil, nil", ann, err)
+	if ann := (HTTPRoute{}).ParentAnnotations(context.Background(), route, k8s.NewFetcher(client)); ann != nil {
+		t.Errorf("got %v, want nil", ann)
 	}
 }

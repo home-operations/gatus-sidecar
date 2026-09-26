@@ -39,5 +39,5 @@ type Resource interface {
 
 	// ParentAnnotations returns the parent's annotations for template
 	// inheritance (Gateway → HTTPRoute, IngressClass → Ingress) or nil.
-	ParentAnnotations(ctx context.Context, obj metav1.Object, fetcher *Fetcher) (map[string]string, error)
+	ParentAnnotations(ctx context.Context, obj metav1.Object, fetcher *Fetcher) map[string]string
 }

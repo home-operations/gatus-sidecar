@@ -66,14 +66,14 @@ func (HTTPRoute) GuardHost(obj metav1.Object) string {
 	return firstHTTPRouteHostname(route)
 }
 
-func (HTTPRoute) ParentAnnotations(ctx context.Context, obj metav1.Object, fetcher *k8s.Fetcher) (map[string]string, error) {
+func (HTTPRoute) ParentAnnotations(ctx context.Context, obj metav1.Object, fetcher *k8s.Fetcher) map[string]string {
 	route, ok := obj.(*gatewayv1.HTTPRoute)
 	if !ok || len(route.Spec.ParentRefs) == 0 {
-		return nil, nil
+		return nil
 	}
 	parent := route.Spec.ParentRefs[0]
 	if parent.Kind != nil && *parent.Kind != "Gateway" {
-		return nil, nil
+		return nil
 	}
 
 	gvr := gatewayGVR

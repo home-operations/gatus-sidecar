@@ -207,10 +207,7 @@ func TestIngress_ParentAnnotations(t *testing.T) {
 	}
 
 	ing := makeIngress("x", false, &className)
-	ann, err := (Ingress{}).ParentAnnotations(context.Background(), ing, k8s.NewFetcher(client))
-	if err != nil {
-		t.Fatalf("ParentAnnotations: %v", err)
-	}
+	ann := (Ingress{}).ParentAnnotations(context.Background(), ing, k8s.NewFetcher(client))
 	if ann["parent"] != "annotation" {
 		t.Errorf("ParentAnnotations = %v, want {parent: annotation}", ann)
 	}
@@ -222,7 +219,7 @@ func TestIngress_ParentAnnotations_Missing(t *testing.T) {
 	client := fake.NewSimpleDynamicClient(scheme)
 	ing := makeIngress("x", false, nil)
 
-	if ann, err := (Ingress{}).ParentAnnotations(context.Background(), ing, k8s.NewFetcher(client)); ann != nil || err != nil {
-		t.Errorf("ParentAnnotations(no class) = %v, %v; want nil, nil", ann, err)
+	if ann := (Ingress{}).ParentAnnotations(context.Background(), ing, k8s.NewFetcher(client)); ann != nil {
+		t.Errorf("ParentAnnotations(no class) = %v, want nil", ann)
 	}
 }

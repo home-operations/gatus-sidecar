@@ -21,6 +21,10 @@ type Writer struct {
 
 	mu        sync.Mutex
 	endpoints map[string]*Endpoint
+	// started gates Flush so the first file holds every controller's initial
+	// endpoints; Gatus reloads on each write, so a file with only the kinds
+	// that synced first would briefly drop the rest.
+	started bool
 	// dirty signals that the in-memory state may differ from the on-disk
 	// file (an unflushed change, a failed flush, or no flush yet). Cleared
 	// only when Flush succeeds, so a transient write failure is retried on
@@ -68,13 +72,21 @@ func (w *Writer) Len() int {
 	return len(w.endpoints)
 }
 
+// Start enables writing and flushes. Before Start, Flush only tracks state.
+func (w *Writer) Start() error {
+	w.mu.Lock()
+	w.started = true
+	w.mu.Unlock()
+	return w.Flush()
+}
+
 // Flush writes the endpoints to disk if they changed since the last
-// successful Flush. The first call always writes, so the file exists even
-// when there are no endpoints.
+// successful Flush. The first write after Start always happens, so the file
+// exists even when there are no endpoints.
 func (w *Writer) Flush() error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	if !w.dirty {
+	if !w.started || !w.dirty {
 		return nil
 	}
 

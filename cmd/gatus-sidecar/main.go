@@ -12,6 +12,7 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/home-operations/gatus-sidecar/internal/config"
 	"github.com/home-operations/gatus-sidecar/internal/gatus"
@@ -25,6 +26,10 @@ var (
 	Version = "local"
 	Gitsha  = "?"
 )
+
+// initialSyncTimeout bounds how long the first write waits for every kind to
+// sync. A kind whose CRD isn't installed never syncs.
+const initialSyncTimeout = 30 * time.Second
 
 func main() {
 	if err := run(os.Args[0], os.Args[1:]); err != nil {
@@ -65,14 +70,27 @@ func run(name string, args []string) error {
 	writer := gatus.NewWriter(cfg.Output)
 
 	var wg sync.WaitGroup
+	controllers := make([]*k8s.Controller, 0, len(enabled))
 	for _, r := range enabled {
 		c := k8s.NewController(cfg, r, writer, dc)
+		controllers = append(controllers, c)
 		wg.Go(func() {
 			if err := c.Run(ctx); err != nil {
 				slog.Error("controller stopped", "resource", c.Resource(), "error", err)
 				cancel()
 			}
 		})
+	}
+
+	// Hold the first write until every kind has synced; see gatus.Writer.Start.
+	pending := k8s.WaitSynced(ctx, controllers, initialSyncTimeout)
+	if ctx.Err() == nil {
+		if len(pending) > 0 {
+			slog.Warn("writing before every kind synced; the rest follow as they sync", "pending", pending)
+		}
+		if err := writer.Start(); err != nil {
+			slog.Error("initial write failed", "error", err)
+		}
 	}
 	wg.Wait()
 	slog.Info("shutdown complete")

@@ -67,7 +67,7 @@ func TestService_GuardHostAndParentAnnotations_NoOps(t *testing.T) {
 	if got := (Service{}).GuardHost(makeService("a", "n", 80, corev1.ProtocolTCP)); got != "" {
 		t.Errorf("GuardHost() = %q, want \"\"", got)
 	}
-	if ann, err := (Service{}).ParentAnnotations(context.Background(), makeService("a", "n", 80, corev1.ProtocolTCP), nil); ann != nil || err != nil {
-		t.Errorf("ParentAnnotations = %v, %v; want nil, nil", ann, err)
+	if ann := (Service{}).ParentAnnotations(context.Background(), makeService("a", "n", 80, corev1.ProtocolTCP), nil); ann != nil {
+		t.Errorf("ParentAnnotations should always return nil, got %v", ann)
 	}
 }

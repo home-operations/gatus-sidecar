@@ -56,6 +56,6 @@ func (Service) DefaultConditions() []string { return tcpDefaultConditions }
 // Services have no meaningful guarded mode.
 func (Service) GuardHost(metav1.Object) string { return "" }
 
-func (Service) ParentAnnotations(context.Context, metav1.Object, *k8s.Fetcher) (map[string]string, error) {
-	return nil, nil
+func (Service) ParentAnnotations(context.Context, metav1.Object, *k8s.Fetcher) map[string]string {
+	return nil
 }

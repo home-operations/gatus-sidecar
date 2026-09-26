@@ -62,8 +62,8 @@ func (IngressRoute) GuardHost(obj metav1.Object) string {
 	return host
 }
 
-func (IngressRoute) ParentAnnotations(context.Context, metav1.Object, *k8s.Fetcher) (map[string]string, error) {
-	return nil, nil
+func (IngressRoute) ParentAnnotations(context.Context, metav1.Object, *k8s.Fetcher) map[string]string {
+	return nil
 }
 
 // firstIngressRouteHostAndPath scans the route list for the first match

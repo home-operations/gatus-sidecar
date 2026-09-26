@@ -70,14 +70,14 @@ func (Ingress) GuardHost(obj metav1.Object) string {
 	return host
 }
 
-func (Ingress) ParentAnnotations(ctx context.Context, obj metav1.Object, fetcher *k8s.Fetcher) (map[string]string, error) {
+func (Ingress) ParentAnnotations(ctx context.Context, obj metav1.Object, fetcher *k8s.Fetcher) map[string]string {
 	ing, ok := obj.(*networkingv1.Ingress)
 	if !ok {
-		return nil, nil
+		return nil
 	}
 	className := ingressClassOf(ing)
 	if className == "" {
-		return nil, nil
+		return nil
 	}
 	return fetcher.GetAnnotations(ctx, ingressClassGVR, "", className)
 }

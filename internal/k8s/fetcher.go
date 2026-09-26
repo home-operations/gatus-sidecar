@@ -2,13 +2,13 @@ package k8s
 
 import (
 	"context"
-	"fmt"
+	"log/slog"
+	"sync"
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	utilcache "k8s.io/apimachinery/pkg/util/cache"
 	"k8s.io/client-go/dynamic"
 )
 
@@ -17,38 +17,58 @@ import (
 // without a live apiserver hit per reconcile. Safe for concurrent use.
 type Fetcher struct {
 	client dynamic.Interface
-	cache  *utilcache.Expiring
+
+	mu    sync.Mutex
+	cache map[string]fetcherEntry
+}
+
+type fetcherEntry struct {
+	annotations map[string]string
+	expires     time.Time
 }
 
 const fetcherTTL = 30 * time.Second
 
-// NewFetcher returns a Fetcher that caches annotation lookups (including
-// not-found) for ~30s.
+// NewFetcher returns a Fetcher that caches each lookup for ~30s.
 func NewFetcher(client dynamic.Interface) *Fetcher {
-	return &Fetcher{client: client, cache: utilcache.NewExpiring()}
+	return &Fetcher{client: client, cache: make(map[string]fetcherEntry)}
 }
 
-// GetAnnotations returns the annotations of the named object, or nil when
-// it doesn't exist. An empty namespace addresses a cluster-scoped object.
-// Other errors are returned uncached so the caller can retry rather than
-// act on a transient failure as if the object had no annotations.
-func (f *Fetcher) GetAnnotations(ctx context.Context, gvr schema.GroupVersionResource, namespace, name string) (map[string]string, error) {
+// GetAnnotations returns the annotations of the named object, or nil when it
+// doesn't exist or the sidecar isn't allowed to read it. An empty namespace
+// addresses a cluster-scoped object. On any other error it keeps serving the
+// last annotations it read, so a transient failure doesn't strip an
+// endpoint's inherited template.
+func (f *Fetcher) GetAnnotations(ctx context.Context, gvr schema.GroupVersionResource, namespace, name string) map[string]string {
 	key := gvr.String() + "/" + namespace + "/" + name
-	if v, ok := f.cache.Get(key); ok {
-		return v.(map[string]string), nil
+	now := time.Now()
+
+	f.mu.Lock()
+	entry, ok := f.cache[key]
+	f.mu.Unlock()
+	if ok && now.Before(entry.expires) {
+		return entry.annotations
 	}
 
-	var ann map[string]string
 	obj, err := f.client.Resource(gvr).Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
+	if err != nil && !apierrors.IsNotFound(err) {
+		slog.Debug("fetch parent annotations",
+			"gvr", gvr.String(), "namespace", namespace, "name", name, "error", err)
+	}
 	switch {
 	case err == nil:
-		ann = obj.GetAnnotations()
-	case apierrors.IsNotFound(err):
-		// Cache the absence so a missing parent doesn't probe per reconcile.
-	default:
-		return nil, fmt.Errorf("k8s: get %s %s/%s: %w", gvr.Resource, namespace, name, err)
+		entry.annotations = obj.GetAnnotations()
+	case apierrors.IsNotFound(err), apierrors.IsForbidden(err):
+		// Forbidden is expected under a namespaced Role, which can't grant
+		// cluster-scoped IngressClasses or Gateways in other namespaces.
+		entry.annotations = nil
 	}
 
-	f.cache.Set(key, ann, fetcherTTL)
-	return ann, nil
+	// Errors re-arm the TTL too, so an outage costs one GET per parent per TTL
+	// rather than one per child reconcile.
+	entry.expires = now.Add(fetcherTTL)
+	f.mu.Lock()
+	f.cache[key] = entry
+	f.mu.Unlock()
+	return entry.annotations
 }

@@ -2,7 +2,6 @@ package k8s
 
 import (
 	"context"
-	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -26,7 +25,7 @@ type fakeResource struct {
 	conditions     []string
 	guardHost      string
 	urlFn          func(metav1.Object) string
-	parentAnnotsFn func(context.Context, metav1.Object, *Fetcher) (map[string]string, error)
+	parentAnnotsFn func(context.Context, metav1.Object, *Fetcher) map[string]string
 }
 
 func (fakeResource) GVR() schema.GroupVersionResource                            { return testGVR }
@@ -44,11 +43,11 @@ func (f fakeResource) URL(obj metav1.Object, _ *config.Config) string {
 	return "https://example.com"
 }
 
-func (f fakeResource) ParentAnnotations(ctx context.Context, obj metav1.Object, fetcher *Fetcher) (map[string]string, error) {
+func (f fakeResource) ParentAnnotations(ctx context.Context, obj metav1.Object, fetcher *Fetcher) map[string]string {
 	if f.parentAnnotsFn != nil {
 		return f.parentAnnotsFn(ctx, obj, fetcher)
 	}
-	return nil, nil
+	return nil
 }
 
 const testKind = "thing"
@@ -92,6 +91,33 @@ func seed(t *testing.T, client dynamic.Interface, obj *unstructured.Unstructured
 	}
 }
 
+// newStartedWriter returns a started Writer and its output path.
+func newStartedWriter(t *testing.T) (*gatus.Writer, string) {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "out.yaml")
+	w := gatus.NewWriter(path)
+	if err := w.Start(); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	return w, path
+}
+
+// waitForOutput waits until the output file contains want and returns it.
+// Upsert and Flush are separate steps, so the writer's in-memory state can
+// run ahead of the file.
+func waitForOutput(t *testing.T, path, want string) string {
+	t.Helper()
+	var out string
+	if !waitFor(t, func() bool {
+		data, _ := os.ReadFile(path)
+		out = string(data)
+		return strings.Contains(out, want)
+	}) {
+		t.Fatalf("output never contained %q:\n%s", want, out)
+	}
+	return out
+}
+
 func TestController_ReconcileAddsAndDeletesEndpoint(t *testing.T) {
 	client := newFakeClient()
 	seed(t, client, makeUnstructured(nil))
@@ -110,8 +136,13 @@ func TestController_ReconcileAddsAndDeletesEndpoint(t *testing.T) {
 		close(done)
 	}()
 
-	if !waitFor(t, func() bool { return writer.Len() == 1 }) {
-		t.Fatalf("expected 1 endpoint, got %d", writer.Len())
+	select {
+	case <-c.synced:
+	case <-time.After(waitTimeout):
+		t.Fatal("controller never reported synced")
+	}
+	if writer.Len() != 1 {
+		t.Fatalf("expected 1 endpoint after initial sync, got %d", writer.Len())
 	}
 
 	if err := client.Resource(testGVR).Namespace("default").Delete(ctx, "thing-a", metav1.DeleteOptions{}); err != nil {
@@ -174,30 +205,30 @@ func TestController_MissingURLRemovesEndpoint(t *testing.T) {
 	}
 }
 
-func TestController_ParentLookupErrorKeepsEndpoint(t *testing.T) {
-	writer := gatus.NewWriter(filepath.Join(t.TempDir(), "out.yaml"))
-	var parentErr error
-	c := NewController(testConfig(), fakeResource{
-		parentAnnotsFn: func(context.Context, metav1.Object, *Fetcher) (map[string]string, error) {
-			return map[string]string{"tpl": "group: parent-group\n"}, parentErr
-		},
-	}, writer, newFakeClient())
+func TestController_GuardedWithoutHostKeepsDefaultConditions(t *testing.T) {
+	client := newFakeClient()
+	seed(t, client, makeUnstructured(map[string]string{"tpl": "guarded: true\n"}))
+	writer, outPath := newStartedWriter(t)
 
-	if err := c.informer.GetIndexer().Add(makeUnstructured(nil)); err != nil {
-		t.Fatalf("seed indexer: %v", err)
-	}
-	if err := c.reconcile(t.Context(), "default/thing-a"); err != nil {
-		t.Fatalf("reconcile: %v", err)
-	}
+	c := NewController(testConfig(), fakeResource{conditions: []string{"[CONNECTED] == true"}}, writer, client)
+	go func() { _ = c.Run(t.Context()) }()
 
-	parentErr = errors.New("apiserver unavailable")
-	if err := c.reconcile(t.Context(), "default/thing-a"); err == nil {
-		t.Fatal("reconcile should fail when the parent lookup fails")
+	out := waitForOutput(t, outPath, "name: thing-a")
+	if !strings.Contains(out, "[CONNECTED] == true") {
+		t.Errorf("guarded endpoint with no guard host should keep the default conditions:\n%s", out)
 	}
-	if writer.Upsert("things/default/thing-a", &gatus.Endpoint{
-		Name: "thing-a", Group: "parent-group", URL: "https://example.com", Interval: "30s",
-	}) {
-		t.Error("a failed parent lookup should leave the inherited endpoint unchanged")
+}
+
+func TestWaitSynced(t *testing.T) {
+	synced := &Controller{resource: fakeResource{}, synced: make(chan struct{})}
+	close(synced.synced)
+	stuck := &Controller{resource: fakeResource{}, synced: make(chan struct{})}
+
+	if pending := WaitSynced(t.Context(), []*Controller{synced}, time.Minute); pending != nil {
+		t.Errorf("pending = %v, want none", pending)
+	}
+	if pending := WaitSynced(t.Context(), []*Controller{synced, stuck}, 10*time.Millisecond); len(pending) != 1 {
+		t.Errorf("pending = %v, want only the unsynced controller", pending)
 	}
 }
 
@@ -232,8 +263,7 @@ func TestController_AppliesPrefixToEndpointName(t *testing.T) {
 
 	cfg := testConfig()
 	cfg.Kinds[testKind].Prefix = "svc-"
-	outPath := filepath.Join(t.TempDir(), "out.yaml")
-	writer := gatus.NewWriter(outPath)
+	writer, outPath := newStartedWriter(t)
 
 	c := NewController(cfg, fakeResource{
 		urlFn: func(metav1.Object) string { return "https://x" },
@@ -242,17 +272,7 @@ func TestController_AppliesPrefixToEndpointName(t *testing.T) {
 	ctx := t.Context()
 	go func() { _ = c.Run(ctx) }()
 
-	if !waitFor(t, func() bool { return writer.Len() == 1 }) {
-		t.Fatalf("expected 1 endpoint")
-	}
-
-	data, err := os.ReadFile(outPath)
-	if err != nil {
-		t.Fatalf("ReadFile: %v", err)
-	}
-	if !strings.Contains(string(data), "name: svc-thing-a") {
-		t.Errorf("output should contain prefixed name; got:\n%s", data)
-	}
+	waitForOutput(t, outPath, "name: svc-thing-a")
 }
 
 func TestController_TemplateInheritanceAndGuarded(t *testing.T) {
@@ -265,16 +285,15 @@ func TestController_TemplateInheritanceAndGuarded(t *testing.T) {
 	seed(t, client, obj)
 
 	cfg := testConfig()
-	outPath := filepath.Join(t.TempDir(), "out.yaml")
-	writer := gatus.NewWriter(outPath)
+	writer, outPath := newStartedWriter(t)
 
 	r := fakeResource{
 		conditions: []string{"[STATUS] == 200"},
 		guardHost:  "guarded.example.com",
 		urlFn:      func(metav1.Object) string { return "https://thing-a.example.com" },
-		parentAnnotsFn: func(context.Context, metav1.Object, *Fetcher) (map[string]string, error) {
+		parentAnnotsFn: func(context.Context, metav1.Object, *Fetcher) map[string]string {
 			// Parent supplies group; child supplies interval and guarded.
-			return map[string]string{"tpl": "group: parent-group\ninterval: 60s\n"}, nil
+			return map[string]string{"tpl": "group: parent-group\ninterval: 60s\n"}
 		},
 	}
 	c := NewController(cfg, r, writer, client)
@@ -282,15 +301,7 @@ func TestController_TemplateInheritanceAndGuarded(t *testing.T) {
 	ctx := t.Context()
 	go func() { _ = c.Run(ctx) }()
 
-	if !waitFor(t, func() bool { return writer.Len() == 1 }) {
-		t.Fatalf("expected 1 endpoint, got %d", writer.Len())
-	}
-
-	data, err := os.ReadFile(outPath)
-	if err != nil {
-		t.Fatalf("ReadFile: %v", err)
-	}
-	out := string(data)
+	out := waitForOutput(t, outPath, "name: thing-a")
 	for _, want := range []string{
 		"group: parent-group",
 		"interval: 10s",
@@ -327,8 +338,7 @@ func TestController_PathOverrideAndProbePathsFlag(t *testing.T) {
 
 			cfg := testConfig()
 			cfg.ProbePaths = tt.probePaths
-			outPath := filepath.Join(t.TempDir(), "out.yaml")
-			writer := gatus.NewWriter(outPath)
+			writer, outPath := newStartedWriter(t)
 
 			r := fakeResource{
 				urlFn: func(metav1.Object) string { return "https://thing-a.example.com/api" },
@@ -338,16 +348,7 @@ func TestController_PathOverrideAndProbePathsFlag(t *testing.T) {
 			ctx := t.Context()
 			go func() { _ = c.Run(ctx) }()
 
-			if !waitFor(t, func() bool { return writer.Len() == 1 }) {
-				t.Fatalf("expected 1 endpoint, got %d", writer.Len())
-			}
-			data, err := os.ReadFile(outPath)
-			if err != nil {
-				t.Fatalf("ReadFile: %v", err)
-			}
-			if !strings.Contains(string(data), "url: "+tt.wantURL) {
-				t.Errorf("output missing %q\n%s", "url: "+tt.wantURL, data)
-			}
+			waitForOutput(t, outPath, "url: "+tt.wantURL+"\n")
 		})
 	}
 }
