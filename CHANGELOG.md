@@ -53,6 +53,33 @@
   documented annotation behavior, URL-derivation rules, and the new prefix /
   multi-value-filter / log-level flags.
 
+## [0.5.4](https://github.com/home-operations/gatus-sidecar/compare/0.5.3...0.5.4) (2026-10-03)
+
+
+### Bug Fixes
+
+* avoid redundant Gatus reloads and retry failed parent lookups ([#217](https://github.com/home-operations/gatus-sidecar/issues/217)) ([15f4070](https://github.com/home-operations/gatus-sidecar/commit/15f407044988736cf260ab16614126cb89ba1063))
+
+
+### Documentation
+
+* **agents:** point to the org AI Usage Policy instead of restating it ([e1e54bd](https://github.com/home-operations/gatus-sidecar/commit/e1e54bda06386d9c4749593db92057cda58acf83))
+* **agents:** update AI usage policy summary ([72a4c00](https://github.com/home-operations/gatus-sidecar/commit/72a4c00e079f67ead96a9bb086587d429a83e04e))
+
+
+### Miscellaneous Chores
+
+* **github-action:** update action jdx/mise-action (v4.3.0 → v5.0.0) ([#223](https://github.com/home-operations/gatus-sidecar/issues/223)) ([d664128](https://github.com/home-operations/gatus-sidecar/commit/d664128ac5fad6865a6418a83b31bbc09feb7825))
+* **github-release:** update release helm-unittest/helm-unittest (v1.1.2 → v1.2.0) ([#222](https://github.com/home-operations/gatus-sidecar/issues/222)) ([e91b1d3](https://github.com/home-operations/gatus-sidecar/commit/e91b1d38ddd5af0ca5bb1ae150b4e41c4bbbc7fa))
+* **github-release:** update release helm-unittest/helm-unittest (v1.2.0 → v1.2.1) ([#226](https://github.com/home-operations/gatus-sidecar/issues/226)) ([c647515](https://github.com/home-operations/gatus-sidecar/commit/c6475152d90f2412b65b9acb6b1db1898922087a))
+* **mise:** update tool golangci-lint (2.13.2 → 2.14.0) ([#220](https://github.com/home-operations/gatus-sidecar/issues/220)) ([e48c4f2](https://github.com/home-operations/gatus-sidecar/commit/e48c4f2c194438c005954f2c77b635c74985fc60))
+* **mise:** update tool lefthook (2.1.14 → 2.1.15) ([#225](https://github.com/home-operations/gatus-sidecar/issues/225)) ([fd6f6c7](https://github.com/home-operations/gatus-sidecar/commit/fd6f6c78386419dd38937de3f46bdb3fa7156518))
+* **mise:** update tool oxfmt (0.68.0 → 0.69.0) ([#214](https://github.com/home-operations/gatus-sidecar/issues/214)) ([648002d](https://github.com/home-operations/gatus-sidecar/commit/648002d05d6f384b048042b3de9cf8daaea936bd))
+* **mise:** update tool oxfmt (0.69.0 → 0.70.0) ([#216](https://github.com/home-operations/gatus-sidecar/issues/216)) ([abfff9d](https://github.com/home-operations/gatus-sidecar/commit/abfff9d80f5d42ee5f9573ef9121371cd3c34dee))
+* **mise:** update tool oxfmt (0.70.0 → 0.71.0) ([#221](https://github.com/home-operations/gatus-sidecar/issues/221)) ([ca07d7d](https://github.com/home-operations/gatus-sidecar/commit/ca07d7d1705ba3035aa4f5f33b010d67f19dd01a))
+* **mise:** update tool yq (4.53.6 → 4.54.1) ([#224](https://github.com/home-operations/gatus-sidecar/issues/224)) ([390ddb2](https://github.com/home-operations/gatus-sidecar/commit/390ddb22e89ba45d742ebf9f617a50bfd74f075e))
+* **mise:** upgrade lockfile to format revision 3 ([5ebd181](https://github.com/home-operations/gatus-sidecar/commit/5ebd181fbca8cab3a9b6e95f0278eb10ed5390e3))
+
 ## [0.5.3](https://github.com/home-operations/gatus-sidecar/compare/0.5.2...0.5.3) (2026-09-24)
 
 
