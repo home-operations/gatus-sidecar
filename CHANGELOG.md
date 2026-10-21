@@ -53,6 +53,21 @@
   documented annotation behavior, URL-derivation rules, and the new prefix /
   multi-value-filter / log-level flags.
 
+## [0.5.5](https://github.com/home-operations/gatus-sidecar/compare/0.5.4...0.5.5) (2026-10-21)
+
+
+### Bug Fixes
+
+* **container:** update image mirror.gcr.io/curlimages/curl (a134550 → 11e64e2) ([#247](https://github.com/home-operations/gatus-sidecar/issues/247)) ([00e0aa1](https://github.com/home-operations/gatus-sidecar/commit/00e0aa1d34288cf7566947a70bb7ed132a25c13a))
+
+
+### Miscellaneous Chores
+
+* **github-action:** update action jdx/mise-action (v5.1.2 → v5.2.0) ([#248](https://github.com/home-operations/gatus-sidecar/issues/248)) ([861ba7d](https://github.com/home-operations/gatus-sidecar/commit/861ba7dbe8b6e96cd98bce6ce975e5c501d9be2f))
+* **mise:** update mise tools ([#245](https://github.com/home-operations/gatus-sidecar/issues/245)) ([65318fa](https://github.com/home-operations/gatus-sidecar/commit/65318fa967cfff3807134b5a2fd8f7ae8657a006))
+* **mise:** update tool go (1.27.2 → 1.27.3) ([#250](https://github.com/home-operations/gatus-sidecar/issues/250)) ([49a0c2c](https://github.com/home-operations/gatus-sidecar/commit/49a0c2c17cd4e41cf770ffef666fdd3311ff081f))
+* **mise:** update tool golangci-lint (2.14.0 → 2.15.0) ([#249](https://github.com/home-operations/gatus-sidecar/issues/249)) ([eb99d9a](https://github.com/home-operations/gatus-sidecar/commit/eb99d9a96194caf6d24c016df656073ae1681ed4))
+
 ## [0.5.4](https://github.com/home-operations/gatus-sidecar/compare/0.5.3...0.5.4) (2026-10-18)
 
 
