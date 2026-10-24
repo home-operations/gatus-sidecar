@@ -53,6 +53,17 @@
   documented annotation behavior, URL-derivation rules, and the new prefix /
   multi-value-filter / log-level flags.
 
+## [0.5.6](https://github.com/home-operations/gatus-sidecar/compare/0.5.5...0.5.6) (2026-10-24)
+
+
+### Miscellaneous Chores
+
+* **github-action:** update action jdx/mise-action (v5.2.1 → v5.2.2) ([#256](https://github.com/home-operations/gatus-sidecar/issues/256)) ([6969ba5](https://github.com/home-operations/gatus-sidecar/commit/6969ba5feee287bfd540ab36b6b41ae4f5dd5f05))
+* **github-action:** update github-actions ([#253](https://github.com/home-operations/gatus-sidecar/issues/253)) ([9610b7a](https://github.com/home-operations/gatus-sidecar/commit/9610b7a488ee2cd45870eabe1b47a35980855568))
+* **mise:** update tool aqua:dadav/helm-schema (0.23.5 → 0.24.0) ([#251](https://github.com/home-operations/gatus-sidecar/issues/251)) ([e21608d](https://github.com/home-operations/gatus-sidecar/commit/e21608d66ec55e64d0827d49fd8685d02a9a399c))
+* **mise:** update tool cosign (3.1.3 → 3.1.4) ([#255](https://github.com/home-operations/gatus-sidecar/issues/255)) ([82a4890](https://github.com/home-operations/gatus-sidecar/commit/82a48909a30d13e7fe5838ccd841b7d1abd43ca9))
+* **mise:** update tool oxfmt (0.73.0 → 0.74.0) ([#254](https://github.com/home-operations/gatus-sidecar/issues/254)) ([bbbef28](https://github.com/home-operations/gatus-sidecar/commit/bbbef28ca3ebd2f44c32bfb5ce74f6aadd323eec))
+
 ## [0.5.5](https://github.com/home-operations/gatus-sidecar/compare/0.5.4...0.5.5) (2026-10-21)
 
 
