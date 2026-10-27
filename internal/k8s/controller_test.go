@@ -12,6 +12,7 @@ import (
 	"github.com/home-operations/gatus-sidecar/internal/config"
 	"github.com/home-operations/gatus-sidecar/internal/gatus"
 
+	"gopkg.in/yaml.v3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -323,6 +324,77 @@ func TestController_TemplateInheritanceAndGuarded(t *testing.T) {
 		if !strings.Contains(out, want) {
 			t.Errorf("output missing %q\n%s", want, out)
 		}
+	}
+}
+
+func TestController_GuardedParentOverride(t *testing.T) {
+	cases := []struct {
+		name        string
+		template    string
+		wantGuarded bool
+	}{
+		{"inherits parent", "", true},
+		{"child enables guard", "guarded: true\n", true},
+		{"child disables guard", "guarded: false\n", false},
+		{"child clears guard", "guarded: null\n", false},
+		{"child string preserves guard", "guarded: \"false\"\n", true},
+	}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			gvr := schema.GroupVersionResource{Group: "test.io", Version: "v1", Resource: "things"}
+			cfg := &config.Config{
+				DefaultInterval:    30 * time.Second,
+				TemplateAnnotation: "tpl",
+				ProbePaths:         true,
+			}
+			outPath := filepath.Join(t.TempDir(), "out.yaml")
+			r := fakeResource{
+				gvr:        gvr,
+				conditions: []string{"[STATUS] == 200"},
+				guardHost:  "guarded.example.com",
+				urlFn:      func(metav1.Object) string { return "https://guarded.example.com/healthz" },
+				parentAnnotsFn: func(context.Context, metav1.Object, Fetcher) map[string]string {
+					return map[string]string{"tpl": "group: internal\nguarded: true\n"}
+				},
+			}
+			c := NewController(cfg, r, gatus.NewWriter(outPath), newFakeClient(gvr))
+			obj := makeUnstructured(gvr, map[string]string{"tpl": tt.template})
+			if err := c.informer.GetIndexer().Add(obj); err != nil {
+				t.Fatalf("seed indexer: %v", err)
+			}
+			if err := c.reconcile(t.Context(), "default/thing-a", true); err != nil {
+				t.Fatalf("reconcile: %v", err)
+			}
+			data, err := os.ReadFile(outPath)
+			if err != nil {
+				t.Fatalf("ReadFile: %v", err)
+			}
+			var output struct {
+				Endpoints []gatus.Endpoint `yaml:"endpoints"`
+			}
+			if err := yaml.Unmarshal(data, &output); err != nil {
+				t.Fatalf("decode endpoints: %v", err)
+			}
+			if len(output.Endpoints) != 1 {
+				t.Fatalf("expected 1 endpoint, got %d", len(output.Endpoints))
+			}
+			e := output.Endpoints[0]
+			if e.Group != "internal" {
+				t.Errorf("parent group = %q, want internal", e.Group)
+			}
+			wantURL, wantCondition := "https://guarded.example.com/healthz", "[STATUS] == 200"
+			if tt.wantGuarded {
+				wantURL, wantCondition = gatus.GuardedProbeURL, gatus.GuardedEmptyBodyCondition
+				if e.DNS["query-name"] != "guarded.example.com" || e.DNS["query-type"] != gatus.GuardedQueryType {
+					t.Errorf("unexpected DNS probe: %v", e.DNS)
+				}
+			} else if e.DNS != nil {
+				t.Errorf("HTTP probe must not have DNS configuration: %v", e.DNS)
+			}
+			if e.URL != wantURL || len(e.Conditions) != 1 || e.Conditions[0] != wantCondition {
+				t.Errorf("endpoint = %+v, want URL %q and condition %q", e, wantURL, wantCondition)
+			}
+		})
 	}
 }
 

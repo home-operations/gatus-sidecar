@@ -176,14 +176,14 @@ are merged into typed fields; unknown keys are inlined verbatim — so
 > alert; to vary one per endpoint, put it under the alert's
 > `provider-override:` map.
 
-| Template key                       | Behavior                                                        |
-| ---------------------------------- | --------------------------------------------------------------- |
-| `name`, `group`, `url`, `interval` | Override the field.                                             |
-| `conditions`                       | Replace the default conditions. Accepts string or list.         |
-| `dns`, `client`, `ui`              | Deep-merged into the field's map.                               |
-| `guarded`                          | If present, switches the endpoint to a DNS probe.               |
-| `path`                             | Replace the auto-extracted path. Empty string forces bare host. |
-| _anything else_                    | Inlined into the YAML output as-is.                             |
+| Template key                       | Behavior                                                           |
+| ---------------------------------- | ------------------------------------------------------------------ |
+| `name`, `group`, `url`, `interval` | Override the field.                                                |
+| `conditions`                       | Replace the default conditions. Accepts string or list.            |
+| `dns`, `client`, `ui`              | Deep-merged into the field's map.                                  |
+| `guarded`                          | Present values select a DNS probe, except boolean `false` or null. |
+| `path`                             | Replace the auto-extracted path. Empty string forces bare host.    |
+| _anything else_                    | Inlined into the YAML output as-is.                                |
 
 For resources with a parent (HTTPRoute → Gateway, Ingress → IngressClass) the
 **parent's annotation is merged first; the child wins on conflicts** for
@@ -215,6 +215,11 @@ Set `guarded: true` in a template to replace the HTTP probe with a DNS query
 against `1.1.1.1` for the resource's hostname. Useful when the sidecar pod
 can't actually reach the service (split-horizon DNS, external-only ingress)
 but you still want to know DNS is resolving.
+
+After template inheritance is merged, an absent key, null, or boolean
+`false` uses the normal probe. All other present values enable guarded mode,
+including quoted strings such as `"false"`. A child can set `guarded: false`
+to override an inherited guard.
 
 ```yaml
 metadata:
