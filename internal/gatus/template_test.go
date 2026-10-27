@@ -82,14 +82,33 @@ func TestMergeTemplates(t *testing.T) {
 
 func TestIsGuarded(t *testing.T) {
 	t.Parallel()
-	if IsGuarded(nil) {
-		t.Error("nil data should not be guarded")
+	cases := []struct {
+		name string
+		data map[string]any
+		want bool
+	}{
+		{"nil template", nil, false},
+		{"empty template", map[string]any{}, false},
+		{"missing key", map[string]any{"group": "internal"}, false},
+		{"true", map[string]any{"guarded": true}, true},
+		{"false", map[string]any{"guarded": false}, false},
+		{"null", map[string]any{"guarded": nil}, false},
+		{"string true", map[string]any{"guarded": "true"}, true},
+		{"string false", map[string]any{"guarded": "false"}, true},
+		{"other string", map[string]any{"guarded": "any-value"}, true},
+		{"empty string", map[string]any{"guarded": ""}, true},
+		{"number", map[string]any{"guarded": 1}, true},
+		{"zero", map[string]any{"guarded": 0}, true},
+		{"empty map", map[string]any{"guarded": map[string]any{}}, true},
+		{"empty slice", map[string]any{"guarded": []any{}}, true},
 	}
-	if !IsGuarded(map[string]any{"guarded": true}) {
-		t.Error("explicit guarded should be true")
-	}
-	if !IsGuarded(map[string]any{"guarded": "any-value"}) {
-		t.Error("any value at guarded key should be treated as guarded")
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			if got := IsGuarded(tt.data); got != tt.want {
+				t.Errorf("IsGuarded(%v) = %v, want %v", tt.data, got, tt.want)
+			}
+		})
 	}
 }
 

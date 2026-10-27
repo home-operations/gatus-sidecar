@@ -49,8 +49,14 @@ func MergeTemplates(parent, child map[string]any) map[string]any {
 
 // IsGuarded reports whether data opts the endpoint into a DNS-only probe.
 func IsGuarded(data map[string]any) bool {
-	_, ok := data["guarded"]
-	return ok
+	switch guarded := data["guarded"].(type) {
+	case nil:
+		return false
+	case bool:
+		return guarded
+	default:
+		return true
+	}
 }
 
 // PathOverride returns the explicit path override and true when the template
