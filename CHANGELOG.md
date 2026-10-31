@@ -53,6 +53,27 @@
   documented annotation behavior, URL-derivation rules, and the new prefix /
   multi-value-filter / log-level flags.
 
+## [0.6.1](https://github.com/home-operations/gatus-sidecar/compare/0.6.0...0.6.1) (2026-10-31)
+
+
+### Features
+
+* **container:** update image ghcr.io/twin/gatus (v5.37.0 → v5.38.0) ([#263](https://github.com/home-operations/gatus-sidecar/issues/263)) ([c441959](https://github.com/home-operations/gatus-sidecar/commit/c441959520988781bd9be72397331da7707ed666))
+
+
+### Bug Fixes
+
+* **container:** update image mirror.gcr.io/curlimages/curl (11e64e2 → 3fb7e13) ([#261](https://github.com/home-operations/gatus-sidecar/issues/261)) ([4694fef](https://github.com/home-operations/gatus-sidecar/commit/4694fef889df36d42596ac84868455f3af8a5608))
+
+
+### Miscellaneous Chores
+
+* **github-action:** update action jdx/mise-action (v5.2.3 → v5.2.4) ([#265](https://github.com/home-operations/gatus-sidecar/issues/265)) ([b6c77b4](https://github.com/home-operations/gatus-sidecar/commit/b6c77b4977cb467568a04db22083e47f9434d523))
+* **go:** update kubernetes monorepo (v0.37.1 → v0.37.2) ([#266](https://github.com/home-operations/gatus-sidecar/issues/266)) ([ed407f7](https://github.com/home-operations/gatus-sidecar/commit/ed407f7982145d0cddbc672b4cbcae56544b2751))
+* **go:** update module sigs.k8s.io/gateway-api (v1.6.3 → v1.7.0) ([#267](https://github.com/home-operations/gatus-sidecar/issues/267)) ([21064b8](https://github.com/home-operations/gatus-sidecar/commit/21064b87dc9c7ff0116ba06d3ed986b75363bf9c))
+* **mise:** update tool oxfmt (0.74.0 → 0.75.0) ([#264](https://github.com/home-operations/gatus-sidecar/issues/264)) ([4908f0c](https://github.com/home-operations/gatus-sidecar/commit/4908f0c0445d185766945523c5c09f4a1eecc994))
+* **renovate:** extend the org preset from home-operations/.github ([26ac1db](https://github.com/home-operations/gatus-sidecar/commit/26ac1db4611be629542d0593708974c493150fcc))
+
 ## [0.6.0](https://github.com/home-operations/gatus-sidecar/compare/0.5.5...0.6.0) (2026-10-27)
 
 
