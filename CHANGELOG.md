@@ -53,6 +53,21 @@
   documented annotation behavior, URL-derivation rules, and the new prefix /
   multi-value-filter / log-level flags.
 
+## [0.6.2](https://github.com/home-operations/gatus-sidecar/compare/0.6.1...0.6.2) (2026-11-07)
+
+
+### Continuous Integration
+
+* replace the shared workflow-lint action with zizmor-action ([46da909](https://github.com/home-operations/gatus-sidecar/commit/46da9091abf5bff9300ae56aa09c5dd0a1f2c945))
+
+
+### Miscellaneous Chores
+
+* **github-action:** update action helm/kind-action (v1.15.1 → v1.15.2) ([#272](https://github.com/home-operations/gatus-sidecar/issues/272)) ([20e5661](https://github.com/home-operations/gatus-sidecar/commit/20e566177b932443a43e9d6e68df481eb3b2f0dd))
+* **github-action:** update action jdx/mise-action (v5.2.4 → v5.2.5) ([#268](https://github.com/home-operations/gatus-sidecar/issues/268)) ([aff4da2](https://github.com/home-operations/gatus-sidecar/commit/aff4da2bd4de48a34944a6f87f3346477ad320d7))
+* **github-action:** update github-actions ([#270](https://github.com/home-operations/gatus-sidecar/issues/270)) ([78d2462](https://github.com/home-operations/gatus-sidecar/commit/78d2462911db66127afc262a2c3011601d0cc599))
+* **mise:** update tool zizmor (1.31.1 → 1.32.0) ([#271](https://github.com/home-operations/gatus-sidecar/issues/271)) ([df93a3c](https://github.com/home-operations/gatus-sidecar/commit/df93a3c10a848c906ef2dcdd41efb7380f766ed4))
+
 ## [0.6.1](https://github.com/home-operations/gatus-sidecar/compare/0.6.0...0.6.1) (2026-11-01)
 
 
