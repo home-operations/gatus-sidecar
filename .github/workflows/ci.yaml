@@ -50,7 +50,7 @@ jobs:
           install_args: --locked
 
       - name: Create Kind cluster
-        uses: helm/kind-action@1544676c07bb3570fcb70166beaa07c4528fd4aa # v1.15.1
+        uses: helm/kind-action@ea822c7bf1874f08e5a491df991c228edffc3376 # v1.15.2
         with:
           version: v0.33.0
           cluster_name: gatus-sidecar-e2e
@@ -159,7 +159,7 @@ jobs:
       - name: Create Kind cluster
         id: kind
         background: true
-        uses: helm/kind-action@1544676c07bb3570fcb70166beaa07c4528fd4aa # v1.15.1
+        uses: helm/kind-action@ea822c7bf1874f08e5a491df991c228edffc3376 # v1.15.2
         with:
           version: v0.33.0
           node_image: kindest/node:v1.37.0
