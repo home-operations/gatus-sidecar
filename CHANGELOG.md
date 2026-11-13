@@ -53,6 +53,27 @@
   documented annotation behavior, URL-derivation rules, and the new prefix /
   multi-value-filter / log-level flags.
 
+## [0.6.2](https://github.com/home-operations/gatus-sidecar/compare/0.6.1...0.6.2) (2026-11-13)
+
+
+### Continuous Integration
+
+* replace the shared workflow-lint action with zizmor-action ([46da909](https://github.com/home-operations/gatus-sidecar/commit/46da9091abf5bff9300ae56aa09c5dd0a1f2c945))
+
+
+### Miscellaneous Chores
+
+* **github-action:** update action docker/github-builder (v1.18.1 → v1.19.0) ([#274](https://github.com/home-operations/gatus-sidecar/issues/274)) ([a9b38ca](https://github.com/home-operations/gatus-sidecar/commit/a9b38ca09f2c5f47e218010e9a091562288e508b))
+* **github-action:** update action docker/login-action (v4.7.0 → v4.8.0) ([#273](https://github.com/home-operations/gatus-sidecar/issues/273)) ([a3c30a9](https://github.com/home-operations/gatus-sidecar/commit/a3c30a9592fc67bee8524fd4d263c3be5f140cba))
+* **github-action:** update action helm/kind-action (v1.15.1 → v1.15.2) ([#272](https://github.com/home-operations/gatus-sidecar/issues/272)) ([20e5661](https://github.com/home-operations/gatus-sidecar/commit/20e566177b932443a43e9d6e68df481eb3b2f0dd))
+* **github-action:** update action jdx/mise-action (v5.2.4 → v5.2.5) ([#268](https://github.com/home-operations/gatus-sidecar/issues/268)) ([aff4da2](https://github.com/home-operations/gatus-sidecar/commit/aff4da2bd4de48a34944a6f87f3346477ad320d7))
+* **github-action:** update action jdx/mise-action (v5.2.6 → v5.2.7) ([#276](https://github.com/home-operations/gatus-sidecar/issues/276)) ([c124cf7](https://github.com/home-operations/gatus-sidecar/commit/c124cf7dbd4e24a223ba55cfd414305c75285436))
+* **github-action:** update github-actions ([#270](https://github.com/home-operations/gatus-sidecar/issues/270)) ([78d2462](https://github.com/home-operations/gatus-sidecar/commit/78d2462911db66127afc262a2c3011601d0cc599))
+* **mise:** update tool go (1.27.3 → 1.27.4) ([#278](https://github.com/home-operations/gatus-sidecar/issues/278)) ([9821f50](https://github.com/home-operations/gatus-sidecar/commit/9821f501c2a82d33d86a4e4940255aa8831b5d92))
+* **mise:** update tool yq (4.54.1 → 4.54.2) ([#275](https://github.com/home-operations/gatus-sidecar/issues/275)) ([5a3cf3b](https://github.com/home-operations/gatus-sidecar/commit/5a3cf3bc38db1edec7d9456d0c7ae6cd89376816))
+* **mise:** update tool yq (4.54.2 → 4.54.3) ([#277](https://github.com/home-operations/gatus-sidecar/issues/277)) ([21d895b](https://github.com/home-operations/gatus-sidecar/commit/21d895b573f96923c9d3b0e39197bf19e7ec7af2))
+* **mise:** update tool zizmor (1.31.1 → 1.32.0) ([#271](https://github.com/home-operations/gatus-sidecar/issues/271)) ([df93a3c](https://github.com/home-operations/gatus-sidecar/commit/df93a3c10a848c906ef2dcdd41efb7380f766ed4))
+
 ## [0.6.1](https://github.com/home-operations/gatus-sidecar/compare/0.6.0...0.6.1) (2026-11-01)
 
 
